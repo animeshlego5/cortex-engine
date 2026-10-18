@@ -24,14 +24,14 @@ Create `inbox/<Short Title>.md`:
 ```yaml
 ---
 type: inbox
-candidate_category: car
+candidate_category: travel
 confidence: 0.3
 created: 2026-10-17
-description: "Car service due at 30,000 km, last done at 20,000 km"
+description: "Kyoto: want to see the moss temple, book months ahead"
 ---
 ```
 
-- `candidate_category` is your best guess at a NEW category slug that would hold this kind of thing (lowercase, hyphens, general enough to hold many future items: `car`, not `car-servicing-oct`).
+- `candidate_category` is your best guess at a NEW category slug that would hold this kind of thing (lowercase, hyphens, general enough to hold many future items: `travel`, not `kyoto-trip-tips`).
   Reuse a slug that other inbox items already use if it fits. Run `cortex status` to see the current candidate slugs.
 - If even that is unclear, use `candidate_category: unknown` and ask the user one short question at the end of your reply.
 
@@ -43,12 +43,19 @@ A new top-level category is created when ANY of these is true:
 2. **Repeated demand.** `cortex plan` reports a promotion candidate: at least `new_min_items` (3) inbox items share a `candidate_category`, spread over at least `new_min_distinct_days` (2) different days. Proposed in the daily summary, created when the user approves.
 3. **Obvious collection.** The item is clearly the first of a repeating collection that no category could ever hold (e.g. the first recipe when there is no food category). Create it only if you would bet the user adds more within a month. When in doubt, use the inbox instead. A wrong category costs more than a short wait.
 
+**One thing vs many things.** If several items are about ONE thing (the user's car, their flat, their dog, one client),
+that is an **entity note**, not a category. Route each item by what it is (a task goes to todos, a cost to finance) and link it to the entity
+(`relates_to:: [[Car]]`). The entity lives in `things/` (owned or looked-after things), `people/` (people, orgs) or `projects/`.
+A category is only for MANY things of the same kind that the user collects or tracks (recipes, trips, workouts, wines).
+
 Before creating, check it is not a SUBTYPE of an existing category. Recipes are not media; cars are not finance;
 but "podcasts" IS media (add `podcast` to media's `types` instead of making a category).
 Adding a type to an existing category is always preferred over a new category.
 
 To create one:
 1. Append a `## <slug>` block to `_meta/categories.md` with `name`, `belongs` (one clear sentence, including what does NOT belong), `types`, `decay`, `examples` (use the real items that triggered it), and `created: YYYY-MM-DD`.
+   For `decay`, use `permanent` if the notes are durable facts the user would never want to lose (health records, documents), `fast` if they are short-lived (a shopping list), otherwise `slow`.
+   If the items are repeated events (workouts, meals), the category holds one log note per subject (note-format.md section 6).
 2. Run `node .engine/scripts/cortex.mjs reindex`. It creates the folder and the `Hub - <Name>.md` note.
 3. Move the matching inbox items into the new folder, converting each to a proper note (note-format.md). Remove the `candidate_category` and `confidence` fields.
 4. Log it: `- <date> | create-category | <slug>: <reason / trigger rule number>`.
@@ -70,7 +77,7 @@ Each tier is reached after that many days without activity (`_meta/config.json` 
 
 | Class | warm | cold | archive candidate | Used for |
 |---|---|---|---|---|
-| `permanent` | never | never | never | goals, finance, people |
+| `permanent` | never | never | never | goals, finance, people, things |
 | `slow` | 60 | 180 | 365 | projects, media, ideas, reference |
 | `fast` | 7 | 21 | 45 | todos |
 

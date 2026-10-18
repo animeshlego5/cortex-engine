@@ -51,6 +51,7 @@ Common statuses (use these before inventing new ones):
 |---|---|
 | task | `todo`, `doing`, `waiting`, `done`, `dropped` |
 | routine | `active`, `paused`, `dropped` |
+| vehicle, home, device, pet, possession | `active`, `sold`, `gone` |
 | project | `idea`, `active`, `paused`, `done`, `dropped` |
 | goal | `active`, `achieved`, `abandoned` |
 | movie, show, book, game, podcast, video, article, music | `want`, `in-progress`, `done`, `dropped` |
@@ -103,11 +104,18 @@ The vault's `_meta/config.json` holds this list (`relation_types`). Do not inven
 
 Every new or updated note must have:
 
-1. **One hub link**: `part_of:: [[Hub - <Category Name>]]`, unless the note is already `part_of` a project or goal in the same category.
-2. **A link to every entity it mentions** that has its own note (people, orgs, cards, projects, goals). Search for the entity first.
+1. **Exactly one hub link**: `part_of:: [[Hub - <Category Name>]]` for the folder the note lives in.
+2. **A link to every entity it mentions** that has its own note (people, orgs, things, cards, projects, goals). Search for the entity first.
+   Use a typed line when a relation type fits (`recommended_by:: [[Sam]]`); otherwise a plain `[[Sam]]` in the text is enough.
+   If the entity has no note yet (first mention), write a plain `[[Sam]]` in the text only. Typed lines must point at existing notes.
 3. **2-3 links to genuinely related notes**, found by searching the vault, each with a relation type. Zero is fine if nothing is truly related. Never invent links to look connected.
 
 And:
+
+- **One relation per target.** Never link the same target twice with different keys. Pick the most specific one
+  (`supports` beats `part_of` beats `relates_to`). "File X under goal Y" means one link from X to Y (`supports::` or `part_of::`), not a move.
+- **When you create an entity note, upgrade earlier mentions.** Search for `[[Name]]` in other notes. Where a typed relation fits
+  (e.g. the movie Sam recommended), add the typed line to that note's `## Related`.
 
 - **Cross-category connections go through entities.** A movie Sam recommended and a job tip from Sam are connected because both link `[[Sam]]`. Do not link the movie to the job tip directly.
 - **One fact, one place.** If a fact belongs to another note (Sam's phone number belongs in `Sam.md`), put it there and link to it. Do not copy it.
@@ -117,23 +125,37 @@ And:
 
 ## 6. Entity or plain note?
 
-Create a separate **entity note** (person, org, card, account, investment, project, goal, place) when ANY is true:
+Create a separate **entity note** (person, org, thing, card, account, investment, project, goal, place) when ANY is true:
 - it is mentioned for the **second time** on a different day, or
-- the user states a fact about it that can **change over time** (role, balance, status, address, plan), or
-- the user will **act on it** (a contact to call, a card to pay, a subscription to cancel).
+- the user states a **lasting fact** about it: a role, birthday, preference, balance, status, address or plan, or
+- the user will **act on it** (a contact to call, a card to pay, a subscription to cancel, a car to service).
 
 Otherwise, a one-off mention stays a plain `[[wikilink]]` (or plain text) inside the note that mentions it. Do not create empty stubs.
+
+**Purposes are goals.** When an item states what it is for and that purpose is a life outcome ("for retirement",
+"for the house deposit", "to get fit for the wedding"), find or create that goal note in `goals/` (status `active`) and link to it:
+`funds::` from money items, `supports::` from projects, habits and tasks. Mention the new goal in your reply so the user can correct it.
+
+**Repeated events are logs, not notes.** Workouts, runs, meals, readings, expenses of the same kind: one note per recurring SUBJECT
+(`Squats`, `Running`, `Blood Pressure`), with each occurrence appended to its `## Timeline` as a dated line
+(`- 2026-11-05: 5x5 at 60kg`). Never one note per session. That would create endless near-duplicate names.
+Put the latest value in frontmatter (`last: "5x5 at 60kg"`) so recall can answer without reading the log.
+
+**Things the user owns** (car, flat, laptop, pet) get one note in `things/` as soon as the user states a lasting fact or a task about them.
+Tasks, costs and insurance about the thing live in their own categories and link to it with `relates_to::`.
 
 ## 7. Updating instead of creating
 
 Before creating any note, search for it (file names, `aliases`, and full text for the key words). If it exists:
 - Update its frontmatter to the new current state and bump `updated`.
 - Append a `## Timeline` line describing the change.
-- Add any new aliases the user used.
+- Add any new aliases the user used. Aliases are NAMES ("Alex", "Alex Kim"), never roles ("my manager"), because roles change.
+  Roles and relationships go in frontmatter (`role:`, `relationship:`) and the Timeline.
 - Never overwrite history. If the new fact contradicts an old one without being a clear update (e.g. two different birthdays), keep both, add `contradicts::`, and ask the user.
 
 ## 8. Things that never become notes
 
 - **Secrets**: passwords, PINs, OTPs, CVVs, full card or account numbers, government ID numbers, recovery codes. Store at most the last 4 digits and "see password manager".
 - **Trivial routines** ("drink water", "take vitamins", "stretch"). They go in the day's journal entry only. If the user wants a recurring reminder, add ONE line to the single `todos/Routines.md` note (type `routine`).
+  A habit with its own plan and progress (a training plan, learning a language daily) is NOT trivial: it gets its own `todos/` note with type `routine`.
 - **Chit-chat** and questions to the agent. Answers to questions are not stored unless the user asks, or the answer produced a durable fact worth keeping.

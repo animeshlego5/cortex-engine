@@ -16,7 +16,7 @@ file it, link it, and later recall it. Obsidian can open this folder as a vault,
 | Path | What it is | Who owns it |
 |---|---|---|
 | `inbox/` | Items no category fits yet, plus raw drops from other apps | you process it |
-| `journal/YYYY-MM-DD.md` | Verbatim log of everything the user said, per day | append-only |
+| `journal/YYYY-MM-DD.md` | Verbatim log of the information the user gave, per day (not questions or chit-chat) | append-only |
 | `<category>/` | Filed notes, one folder per category in `_meta/categories.md` | you |
 | `<category>/Hub - <Name>.md` | Category anchor. The catalog section is generated | script |
 | `index.md` | Map of all categories with counts | script |
@@ -44,13 +44,15 @@ Skills live in `.engine/skills/<name>/SKILL.md`. If your tool does not load skil
    Unsure → `needs_review: true`. No fit → `inbox/` with a `candidate_category`. Never invent folders outside those rules.
 4. **New categories** only per `categories-and-decay.md` section 3 (explicit intent, 3+ items over 2+ days, or an obvious new collection).
    Prefer adding a `type` to an existing category.
-5. **Link everything that is real:** a hub link, every mentioned entity, 2-3 searched related notes. Never fake links.
-   Cross-category connections go through entity notes (people, orgs, projects, goals).
+5. **Link everything that is real:** one hub link, every mentioned entity, 2-3 searched related notes, and one relation per target. Never fake links.
+   Cross-category connections go through entity notes (people, orgs, things, projects, goals). One thing the user owns (a car) is an entity in `things/`, not a category.
+   A stated purpose ("for retirement") is a goal: link to it, creating it if needed.
 6. **Never overwrite history.** Current state goes in frontmatter. Changes are appended to `## Timeline`. Conflicting facts get `contradicts::` and a question to the user.
 7. **Never delete.** Cleanup archives (`cortex archive`). Duplicates are merged, and the extra copy goes to `.trash/`.
 8. **Never store secrets**: passwords, PINs, OTPs, CVVs, full card, account or ID numbers. Keep at most the last 4 digits. Redact them even in the journal.
 9. **Never change the vault without approval during maintenance.** Summaries first, then apply.
 10. **Keep the raw words.** Every capture is appended verbatim to today's journal before filing.
+    If `CORTEX_TODAY` is set in the environment, it is "today" for every date you write.
 11. **Log every change** in `_meta/log.md` (one line each) and record every user correction in `_meta/corrections.md`.
 12. **Do not edit generated files**: this `AGENTS.md`, `CLAUDE.md`, `index.md` catalog sections, hub catalog sections, `.claude/skills/`, `.agents/skills/`.
 13. **Do not put personal data in `.engine/`.** It is published publicly. Never run git commands inside `.engine/`; the user commits and pushes the engine.

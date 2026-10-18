@@ -13,6 +13,9 @@ Run `node .engine/scripts/cortex.mjs plan` (the hook may already have done this 
 It writes `_meta/maintenance-plan.json` and a readable `_meta/maintenance-plan.md`. Read the `.md`.
 If `node` is unavailable, do a reduced manual pass: list `inbox/`, and list `todos/` notes with status `done` updated more than 14 days ago.
 
+If the plan proposes nothing (it says "Nothing to do"), run `node .engine/scripts/cortex.mjs done daily` silently and say nothing about it,
+unless the plan says the weekly review is due (see the end of this skill).
+
 ## 2. Don't block the user
 If the user's message was a real request, handle it FIRST, then add the summary at the end of the same reply.
 If the user only opened the session or said hi, show the summary right away.
@@ -36,6 +39,8 @@ For inbox items, propose a destination for each (run the cortex-capture routing 
 Cap the summary at the plan's `max_items_per_run` items. Mention "N more deferred to next run" if the plan says so.
 
 ## 4. On "apply" (or partial apply)
+A bare "apply" approves every proposed ACTION (archive, inbox filing, new categories, lint fixes). It does not answer
+questions: unanswered questions and unconfirmed "needs review" items stay unchanged and are asked again next run.
 Do only what was approved:
 - **Archive**: `node .engine/scripts/cortex.mjs archive <path> [<path>...]`. The script moves the files and sets status and date.
 - **Inbox**: file each approved item with the cortex-capture steps (route, note, link). Raw drops are added to the journal first.
@@ -53,5 +58,6 @@ Run `node .engine/scripts/cortex.mjs done daily --skipped`. Nothing else changes
 Do nothing. The plan stays. The next session (or tomorrow) asks again. Never apply silently.
 
 ## Weekly review
-If the plan says `weekly_due: true`, add one line to the summary: "Weekly review is due too. Run it now?"
-On yes, use the cortex-weekly-review skill.
+If the plan says the weekly review is due, add one line to the summary: "Weekly review is due too. Run it now, or later?"
+On yes, use the cortex-weekly-review skill. On "later", "not now" or no answer, do not ask again in this session.
+On "skip", run `node .engine/scripts/cortex.mjs done weekly --skipped` (asks again in 7 days).

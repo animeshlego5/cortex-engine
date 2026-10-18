@@ -11,7 +11,7 @@ Read `.engine/reference/note-format.md` and `.engine/reference/categories-and-de
 ## Steps
 
 ### 1. Keep the raw words
-Append the user's message verbatim to `journal/YYYY-MM-DD.md` (today, local date) under a time heading. Create the file if missing:
+Append the user's message verbatim (only messages that carry information; not pure questions, greetings or "apply") to `journal/YYYY-MM-DD.md` (today, local date) under a time heading. Create the file if missing:
 
 ```markdown
 ---
@@ -43,7 +43,14 @@ If nothing fits, follow sections 2-3 there (inbox or new category).
 ### 5. Create the note
 Follow note-format.md exactly: unique file name, all required frontmatter, a summary, a Timeline for entities, and a `## Related` block.
 Set `source: "[[YYYY-MM-DD]]"` to today's journal. Apply the entity rule (section 6) to every person, org or thing mentioned:
-if it qualifies, create or update that entity note too, and link to it.
+if it qualifies, create or update that entity note too, and link to it. Apply "purposes are goals" (also section 6):
+"for retirement" means a link to the Retirement goal, created if missing.
+
+Money amounts without a currency use the `Currency` in `_meta/core.md`. If that is blank, store the amount as given
+and ask once, at the end of your reply, which currency the user uses. Then record it in `core.md`.
+
+If the item changes a core fact (the user's city, job, currency, partner or close family, top priorities),
+also update `_meta/core.md` and log it.
 
 ### 6. Link it
 Apply note-format.md section 5: a hub link, links to all mentioned entities, and 2-3 searched related links where real.
@@ -66,6 +73,11 @@ When the user says something was filed wrong ("no, that's a work thing", "that's
 3. Log `correction` in `_meta/log.md`.
 Do NOT edit `_meta/categories.md` right away for a single correction. The weekly review turns repeated corrections into rule changes.
 Exception: if the user explicitly states a rule ("always put X in Y"), add it to `_meta/my-rules.md` now and log `rule-change`.
+
+## Moving an inbox item into a category
+Move the file into the category folder (rename it to a proper note name if needed) and rewrite it as a full note:
+set `type`, `category`, `status`, `updated`; drop `candidate_category` and `confidence`; add the summary and links.
+Never leave a copy in `inbox/`.
 
 ## Files dropped in inbox/
 Raw files in `inbox/` without `type: inbox` frontmatter came from outside (phone, other apps). Treat their content as a user message:

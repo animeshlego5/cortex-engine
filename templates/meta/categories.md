@@ -15,7 +15,7 @@ System folders (`inbox`, `journal`, `archive`, `private`) are not categories and
 
 ## todos
 - name: Todos
-- belongs: Something the user needs to DO that is a single action, with or without a due date. Not multi-step efforts with an outcome (that is a project).
+- belongs: Something the user needs to DO that is a single action, with or without a due date, and habits they keep up (type routine). Not multi-step efforts with an outcome (that is a project).
 - types: task, routine
 - decay: fast
 - examples: "call the dentist tomorrow" | "renew passport before March" | "remind me to pay rent on the 1st"
@@ -59,6 +59,14 @@ System folders (`inbox`, `journal`, `archive`, `private`) are not categories and
 - types: person, org
 - decay: permanent
 - examples: "Priya's birthday is 12 May" | "my manager Alex prefers written updates" | "Acme Corp is the client for the dashboard"
+- created: seed
+
+## things
+- name: Things
+- belongs: A specific thing the user owns, looks after or lives in (their car, flat, laptop, bike, pet, a plant). Each thing gets one note that holds its facts and history; tasks and costs about it live elsewhere and link to it. Not categories of things (a list of recipes is its own category).
+- types: vehicle, home, device, pet, possession
+- decay: permanent
+- examples: "my car is due for service at 30,000 km" (→ [[Car]] note + a task linking to it) | "the flat's boiler was serviced in May" | "my laptop's warranty ends in June"
 - created: seed
 
 ## ideas

@@ -6,7 +6,7 @@ It cleans itself up over time and answers questions like *"what should I watch t
 
 - **Works with any agent**: Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini. One `AGENTS.md`, plus shared Agent Skills.
 - **Plain markdown**: open it in [Obsidian](https://obsidian.md) for the graph view, or don't. No database, no lock-in.
-- **Grows with you**: starts with 8 general categories and creates new ones when your life needs them (car, recipes, a side business...).
+- **Grows with you**: starts with 9 general categories and creates new ones when your life needs them (car, recipes, a side business...).
 - **Forgets the right things**: done todos and stale notes get archived (never deleted). Goals, money and people never decay.
 - **Your notes stay on your machine**: the engine (this repo) and your notes live in separate folders. Your vault only *links* to the engine, so pushing the engine can never include a note.
 
@@ -17,7 +17,7 @@ cortex-engine/             ← THIS repo (rules, skills, scripts). The only thin
 my-cortex/                 ← YOUR vault: a local folder (with optional local-only git history for undo)
   AGENTS.md  CLAUDE.md     ← generated from the engine; every agent reads these
   inbox/ journal/          ← raw input: unsorted items, and a verbatim daily log
-  todos/ projects/ goals/ finance/ media/ people/ ideas/ reference/   ← filed notes (+ categories Cortex adds)
+  todos/ projects/ goals/ finance/ media/ people/ things/ ideas/ reference/   ← filed notes (+ categories Cortex adds)
   archive/                 ← cleaned-up notes, still searchable
   private/                 ← agents are blocked from reading this
   _meta/                   ← YOUR categories, rules, config, logs (never overwritten by updates)

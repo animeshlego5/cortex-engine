@@ -12,8 +12,12 @@ Answer from what is actually in the vault, and say where it came from.
 1. **Orient.** Read `index.md` to see the categories, then the relevant `Hub - <Name>.md`. Hubs list every note with its description and status.
 2. **Filter by structure first.** Most questions are list queries. Match on frontmatter:
    - "what should I watch" → `media/` with `status: want` (and `type: movie` or `show`).
-   - "what's due" → `todos/` with status `todo` or `doing`, sorted by `due`.
+   - "what's due" → `todos/` with status `todo` or `doing`, sorted by `due`, PLUS any note in any category whose
+     `due` or other date field (e.g. `next_appointment`, `renews`) falls in the period, PLUS open todos with no due date (listed last).
    - "which card for X" → `finance/` with `type: card` and `status: active`. Read their reward details.
+   - "what am I working on / what's going on in my life" → active projects, active goals, active routines, and open todos
+     (status `todo`, `doing` or `waiting`) across ALL categories, grouped by goal where links exist. Never answer "nothing"
+     just because `projects/` is empty.
    Use grep or ripgrep on frontmatter lines (e.g. `rg -l "^status: want" media/`) rather than reading every file.
 3. **Search text second.** For fuzzy questions ("that thing about tax I mentioned"), full-text search the vault with several phrasings, synonyms and likely names. Include `journal/` for when or how something was said.
 4. **Follow links.** Read the matching notes and follow `## Related` and wikilinks up to 2 hops for context (e.g. movie → who recommended it, investment → goal it funds).
