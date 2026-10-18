@@ -110,7 +110,7 @@ Animated sequel. Sam says the visuals are the best of any Spider-Man film.
 | `decided_in` | The decision note that explains why this exists | `decided_in:: [[Chose Index Funds Over Stocks]]` |
 | `relates_to` | Genuinely related, none of the above fit (use sparingly) | `relates_to:: [[Kitchen Renovation]]` |
 
-The vault's `_meta/config.json` holds this list (`relation_types`). Do not invent new keys. If a new one keeps being needed, propose it in the weekly review.
+The vault's `_meta/config.json` holds this list (`relation_types`). Do not invent new keys. If a new one keeps being needed, propose it in the weekly cleanup.
 
 ## 5. Linking rules
 

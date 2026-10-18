@@ -8,7 +8,7 @@ Give yourself a confidence from 0 to 1 for the best match, then use the threshol
 | Confidence | Action |
 |---|---|
 | >= `file_confidence` (0.8) | File it in that category. |
-| >= `review_confidence` (0.5) | File it in the best category AND add `needs_review: true` to its frontmatter. The daily summary lists these so the user can confirm or correct. |
+| >= `review_confidence` (0.5) | File it in the best category AND add `needs_review: true` to its frontmatter. The weekly cleanup summary lists these so the user can confirm or correct. |
 | below that, or no category fits | Put it in `inbox/` as described in section 2. |
 
 Tie-breaks when two categories fit:
@@ -40,7 +40,7 @@ description: "Kyoto: want to see the moss temple, book months ahead"
 A new top-level category is created when ANY of these is true:
 
 1. **Explicit intent.** The user clearly says they want to track a new area ("start tracking my car maintenance", "I want a list of recipes"). Create it immediately.
-2. **Repeated demand.** `cortex plan` reports a promotion candidate: at least `new_min_items` (3) inbox items share a `candidate_category`, spread over at least `new_min_distinct_days` (2) different days. Proposed in the daily summary, created when the user approves.
+2. **Repeated demand.** `cortex plan` reports a promotion candidate: at least `new_min_items` (3) inbox items share a `candidate_category`, spread over at least `new_min_distinct_days` (2) different days. Proposed in the weekly cleanup, created when the user approves.
 3. **Obvious collection.** The item is clearly the first of a repeating collection that no category could ever hold (e.g. the first recipe when there is no food category). Create it only if you would bet the user adds more within a month. When in doubt, use the inbox instead. A wrong category costs more than a short wait.
 
 **One thing vs many things.** If several items are about ONE thing (the user's car, their flat, their dog, one client),
@@ -67,7 +67,7 @@ To create one:
 |---|---|
 | Max folder depth inside a category | `max_depth` (3) |
 | Subfolder inside a category | only when `subfolder_min_notes` (7) notes share a clear sub-group. Otherwise use `type:` and tags. |
-| Merge proposal | a category created more than `merge_after_days` (60) ago that still has fewer than `merge_below_notes` (3) notes gets proposed for merging into the closest category in the weekly review |
+| Merge proposal | a category created more than `merge_after_days` (60) ago that still has fewer than `merge_below_notes` (3) notes gets proposed for merging into the closest category in the weekly cleanup |
 | Never | create empty folders "just in case", or a category for a single item without explicit intent |
 
 ## 5. Decay classes
@@ -87,7 +87,7 @@ Special rules:
 - **Done todos** are archive candidates `archive_done_after_days` (14) after their `updated` date.
 - **Open todos** past their `due` date and untouched for `flag_overdue_after_days` (30) are flagged "still want this?" in the summary, never archived silently.
 - **Media** with status `want` past the archive threshold are asked about ("still want to watch X?") rather than archived silently.
-- **Journal days** older than `rollup_after_days` (30) are proposed for a monthly rollup in the weekly review.
+- **Journal days** older than `rollup_after_days` (30) are proposed for a monthly rollup in the weekly cleanup.
 - **Reading a note refreshes it.** That is why rarely-used but useful notes stay alive.
 
 Archiving NEVER deletes. `cortex archive` moves the note to `archive/<category>/`, sets `status: archived` and `archived: <date>`. Links keep working because names are unique.

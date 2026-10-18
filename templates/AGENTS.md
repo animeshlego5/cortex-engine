@@ -4,7 +4,9 @@
 # Cortex: agent rules
 
 ## Session start (do this first, every session)
-1. Run `node .engine/scripts/cortex.mjs status`. If it prints `MAINTENANCE DUE`, follow the `cortex-maintenance` skill after handling the user's first request. If `node` is missing, skip this step.
+1. Run `node .engine/scripts/cortex.mjs status`. If it prints `ONBOARDING NEEDED`, offer the `cortex-onboarding` interview after handling the user's first request.
+   If it prints `MAINTENANCE DUE`, follow the `cortex-maintenance` skill (the weekly cleanup) after handling the first request.
+   Otherwise never suggest a cleanup. If `node` is missing, skip this step.
 2. Read `_meta/core.md` (who the user is) and `_meta/my-rules.md` (their personal rules, which override this file).
 3. Read `_meta/categories.md` before filing or answering anything.
 
@@ -30,7 +32,8 @@ file it, link it, and later recall it. Obsidian can open this folder as a vault,
 - **A question about their life, lists or plans** ("what should I watch?") → use the `cortex-recall` skill.
 - **Both** (e.g. "I finished Dune, what should I read next?") → capture first, then recall.
 - **A correction** ("no, that's a work thing") → the Corrections section of `cortex-capture`.
-- **"Clean up", "apply", "skip"** after a cleanup summary → `cortex-maintenance`. **"Weekly review"** → `cortex-weekly-review`.
+- **"Clean up", "review", "apply", "skip"** after a cleanup summary → `cortex-maintenance`.
+- **"Set up", "update my profile"** → `cortex-onboarding`.
 - **Improve or update Cortex itself** → `cortex-engine-update`.
 - **Anything else** (coding help, general questions) → just help. Do not store it unless asked.
 
@@ -50,7 +53,7 @@ Skills live in `.engine/skills/<name>/SKILL.md`. If your tool does not load skil
 6. **Never overwrite history.** Current state goes in frontmatter. Changes are appended to `## Timeline`. Conflicting facts get `contradicts::` and a question to the user.
 7. **Never delete.** Cleanup archives (`cortex archive`). Duplicates are merged, and the extra copy goes to `.trash/`.
 8. **Never store secrets**: passwords, PINs, OTPs, CVVs, full card, account or ID numbers. Keep at most the last 4 digits. Redact them even in the journal.
-9. **Never change the vault without approval during maintenance.** Summaries first, then apply.
+9. **Never change the vault without approval during maintenance.** Summaries first, then apply. At most one cleanup suggestion per week.
 10. **Keep the raw words.** Every capture is appended verbatim to today's journal before filing.
     If `CORTEX_TODAY` is set in the environment, it is "today" for every date you write.
 11. **Log every change** in `_meta/log.md` (one line each) and record every user correction in `_meta/corrections.md`.
@@ -63,12 +66,12 @@ Run from the vault root: `node .engine/scripts/cortex.mjs <command>`
 | Command | Does |
 |---|---|
 | `status` | Shows counts, inbox candidates, and whether maintenance is due |
-| `plan [--weekly]` | Writes `_meta/maintenance-plan.md/.json` (what cleanup proposes) |
+| `plan` | Writes `_meta/maintenance-plan.md/.json` (what the weekly cleanup proposes) |
 | `reindex` | Rebuilds hub catalogs and `index.md`, and creates folders and hubs for new categories |
 | `lint` | Reports broken links, missing fields, duplicate names, unknown relation types |
 | `archive <path...>` | Moves notes to `archive/<category>/` and marks them archived |
 | `touch <path...>` | Marks notes as recently used (prevents decay) |
-| `done daily\|weekly [--skipped]` | Records that maintenance ran |
+| `done cleanup\|onboarding [--skipped]` | Records that the cleanup ran (or was skipped), or that onboarding finished |
 | `setup` | Regenerates the files generated from the engine. Safe to re-run |
 
 If Node is not installed, do the same work by hand following the skills. It is slower but everything still works.

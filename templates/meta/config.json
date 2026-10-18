@@ -36,7 +36,7 @@
 
   "maintenance": {
     "max_items_per_run": 15,
-    "weekly_every_days": 7
+    "every_days": 7
   },
 
   "relation_types": [

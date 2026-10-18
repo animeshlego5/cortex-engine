@@ -72,7 +72,7 @@ When the user says something was filed wrong ("no, that's a work thing", "that's
 1. Fix it: move or retype the note, fix frontmatter and links, run reindex.
 2. Append a line to `_meta/corrections.md` in its format.
 3. Log `correction` in `_meta/log.md`.
-Do NOT edit `_meta/categories.md` right away for a single correction. The weekly review turns repeated corrections into rule changes.
+Do NOT edit `_meta/categories.md` right away for a single correction. The weekly cleanup turns repeated corrections into rule changes.
 Exception: if the user explicitly states a rule ("always put X in Y"), add it to `_meta/my-rules.md` now and log `rule-change`.
 
 ## Moving an inbox item into a category

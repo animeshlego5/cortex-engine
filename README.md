@@ -27,9 +27,11 @@ my-cortex/                 ← YOUR vault: a local folder (with optional local-o
 1. **Capture**: you say anything. The agent keeps your raw words in `journal/`, splits them into items, looks for existing notes,
    routes each item using `_meta/categories.md`, writes a note with structured frontmatter, and links it to related notes.
 2. **Recall**: you ask anything. The agent reads `index.md` → the category hub → matching notes, follows links, and answers with sources.
-3. **Maintain**: on your first message each day, a hook (or the `AGENTS.md` startup rule) checks whether cleanup is due.
+3. **Maintain**: about once a week (configurable), a hook (or the `AGENTS.md` startup rule) notices a cleanup is due.
    The script works out what is stale and the agent shows a short summary. Nothing changes until you say **apply**.
-4. **Learn**: your corrections are logged, and the weekly review turns repeated ones into better routing rules for your vault.
+4. **Learn**: your corrections are logged, and the weekly cleanup turns repeated ones into better routing rules for your vault.
+
+On the first session in a new vault, Cortex runs a short **onboarding interview** (name, city, currency, people, goals, interests, the things you own) so it fits you from day one.
 
 ## Quick start
 
@@ -47,7 +49,7 @@ Keep the `cortex-engine` folder where it is. If you move it, run `node scripts/c
 Back up your vault however you like (an external drive, a cloud-synced folder, or your own private git remote).
 
 Then just talk: *"I want to watch Dune later"*, *"remind me to renew my passport in March"*, *"what should I watch?"*.
-Fill in `_meta/core.md` (name, timezone, currency) on day one. It makes everything more accurate.
+The first session starts with a short onboarding interview. You can skip any question.
 
 ## Capturing from anywhere
 
@@ -71,8 +73,8 @@ Fill in `_meta/core.md` (name, timezone, currency) on day one. It makes everythi
 
 ## Commands
 
-`node .engine/scripts/cortex.mjs <command>`: `status`, `plan [--weekly]`, `reindex`, `lint`, `archive <path>`, `restore <path>`,
-`touch <path>`, `done daily|weekly`, `setup`. From the engine folder: `init <folder>`, `check-engine`. Agents run these for you. See `help`.
+`node .engine/scripts/cortex.mjs <command>`: `status`, `plan`, `reindex`, `lint`, `archive <path>`, `restore <path>`,
+`touch <path>`, `done cleanup|onboarding`, `setup`. From the engine folder: `init <folder>`, `check-engine`. Agents run these for you. See `help`.
 
 ## Privacy
 
@@ -82,7 +84,7 @@ Fill in `_meta/core.md` (name, timezone, currency) on day one. It makes everythi
 
 ## Agent support
 
-| Agent | Rules | Skills | Auto daily check |
+| Agent | Rules | Skills | Auto cleanup check |
 |---|---|---|---|
 | Claude Code | `CLAUDE.md` → `AGENTS.md` | `.claude/skills/` | hook (`UserPromptSubmit`) |
 | Codex CLI | `AGENTS.md` | `.agents/skills/` | hook (`.codex/hooks.json`, approve it once via `/hooks`) |
@@ -92,7 +94,7 @@ Fill in `_meta/core.md` (name, timezone, currency) on day one. It makes everythi
 
 ```
 templates/   AGENTS.md, CLAUDE.md and the starter _meta/ files copied into new vaults
-skills/      cortex-capture, cortex-recall, cortex-maintenance, cortex-weekly-review, cortex-engine-update
+skills/      cortex-onboarding, cortex-capture, cortex-recall, cortex-maintenance (weekly cleanup), cortex-engine-update
 reference/   note-format.md (note anatomy, links, entities), categories-and-decay.md (routing, new categories, cleanup)
 scripts/     cortex.mjs (dependency-free CLI)
 tests/       inputs.md (40-input routing test set)

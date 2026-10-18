@@ -4,6 +4,8 @@ Feed these to an agent running in a FRESH test vault, one day block at a time, i
 After each day, check the vault against "Expect". After all days, run `cortex lint` (expect 0 errors) and the recall questions at the end.
 Simulate days by setting the environment variable `CORTEX_TODAY=<date>` for every script call and telling the agent "Today is <date>" before each block.
 
+Onboarding is tested separately: right after creating the test vault, run `CORTEX_TODAY=2026-11-01 node .engine/scripts/cortex.mjs done onboarding` so the test starts with a set-up vault. Create the vault with `CORTEX_TODAY=2026-11-01` so the weekly cleanup falls due on Day 5.
+
 Scoring: 1 point per input whose expectation is fully met. Target: 37/41 or more on every supported agent.
 
 ## Day 1 (2026-11-02)
@@ -57,8 +59,8 @@ Scoring: 1 point per input whose expectation is fully met. Target: 37/41 or more
 
 | # | Input | Expect |
 |---|---|---|
-| 28 | (first message of the day) hi | maintenance summary shown: workouts promotion proposed, inbox listed. Nothing applied yet |
-| 29 | apply | new workouts category created with belongs/examples from the real items, 3 inbox items moved and converted, `cortex done daily` run, log lines |
+| 28 | (first message of the day) hi | weekly cleanup summary shown (9 days since setup): workouts promotion proposed, inbox listed. Nothing applied yet |
+| 29 | apply | new workouts category created with belongs/examples from the real items, 3 inbox items moved and converted, `cortex done cleanup` run, log lines |
 | 30 | no, the couch to 5k thing is a habit, not a project | moved/retyped (e.g. todos routine), correction logged in `_meta/corrections.md` |
 | 31 | always file anything about running under my half marathon goal | `_meta/my-rules.md` gets the rule; `rule-change` logged |
 | 32 | what do I need to do this week? | recall lists open todos with due dates (dentist appt on the 20th etc.) |

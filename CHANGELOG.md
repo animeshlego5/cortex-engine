@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- One weekly cleanup instead of daily maintenance plus a separate weekly review. It runs at most once every `maintenance.every_days` (7) days and includes the review proposals (corrections into rules, merges, journal rollups). The `cortex-weekly-review` skill is folded into `cortex-maintenance`. `done cleanup` replaces `done daily|weekly` (old forms still accepted).
+- New `cortex-onboarding` skill: a first-session interview (name, age, city, currency, work, people, goals, interests, owned things, money setup, reply preferences) that fills `core.md` and seeds notes. `status` and the hook flag new vaults until `done onboarding`.
+- `core.md` template gains age, work and an interests section.
 - From the first 40-input test run:
   - New `things` seed category. One owned thing (car, flat, laptop) is now an entity note that tasks and costs link to, not a new category.
   - "Purposes are goals": "for retirement" creates or links a goal.
