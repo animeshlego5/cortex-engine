@@ -39,6 +39,18 @@ Required on every note:
 | `created` | `YYYY-MM-DD`, set once. |
 | `updated` | `YYYY-MM-DD`, set on every meaningful edit. |
 
+Dates (pick the matching form, never store a computed "next" date that will go stale):
+
+| Kind | Field | Example |
+|---|---|---|
+| One-off deadline or appointment | `due: YYYY-MM-DD` | `due: 2026-11-20` |
+| Recurring monthly | `day_of_month: N` | card statement on the 12th → `day_of_month: 12` |
+| Recurring yearly | `yearly: MM-DD` | birthday 12 May → `yearly: 05-12` |
+| Triggered by a condition, not a date | `trigger: "<condition>"` (+ `due` only if the user gives a rough date) | `trigger: "at 30,000 km"` |
+| Vague timing | `due` set to the end of the stated window | "before winter" → `due: 2026-12-01` |
+
+Recall computes the next occurrence from `day_of_month` and `yearly` at question time.
+
 Optional: `aliases` (other names the user may use, important for dedup), `tags` (0-5, lowercase, kebab-case),
 `source` (link to the journal day it came from), `pinned: true` (never decays, never auto-archived),
 `due: YYYY-MM-DD` (todos, projects), `importance: 1-5` (default 3; 5 = never decays).
@@ -81,7 +93,7 @@ Animated sequel. Sam says the visuals are the best of any Spider-Man film.
   It is append-only, newest at the bottom: `- YYYY-MM-DD: <what changed or was learned> (source: [[YYYY-MM-DD]])`.
   Never rewrite or delete timeline lines. The frontmatter and summary show the CURRENT state; the timeline shows history.
   This is how "what card did I have before?" stays answerable.
-- `## Related` holds typed links, one per line, in Obsidian's `key:: [[Target]]` form.
+- `## Related` holds typed links, one per line, in Obsidian's `key:: [[Target]]` form. (The example assumes `Sam.md` already exists; on a first mention it would be a plain `[[Sam]]` in the text, see section 5.)
 - Mention other notes in prose with `[[wikilinks]]` too. Every wikilink becomes an edge in Obsidian's graph.
 
 ## 4. Relation types (the only keys allowed in `## Related`)

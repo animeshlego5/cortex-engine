@@ -16,6 +16,11 @@
   - An empty plan is closed silently. The plan shows when the weekly review is due, and the weekly review can be skipped.
   - Amounts use the `core.md` currency, or the agent asks once.
   - "What's due" covers due dates in every category.
+- From the third run (about 40/41):
+  - `status` closes an empty daily plan itself, saving the agent 3 calls a day.
+  - Date field conventions: `due`, `day_of_month`, `yearly`, `trigger`.
+  - Corrections that match the current filing just get a confirmation.
+  - Fixed the example that implied a typed link on a first mention.
 
 ## 0.1.0 (2026-10-18)
 - Initial engine: AGENTS.md rules, five skills (capture, recall, maintenance, weekly review, engine update),

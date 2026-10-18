@@ -4,7 +4,7 @@ Feed these to an agent running in a FRESH test vault, one day block at a time, i
 After each day, check the vault against "Expect". After all days, run `cortex lint` (expect 0 errors) and the recall questions at the end.
 Simulate days by setting the environment variable `CORTEX_TODAY=<date>` for every script call and telling the agent "Today is <date>" before each block.
 
-Scoring: 1 point per input whose expectation is fully met. Target: 36/40 or more on every supported agent.
+Scoring: 1 point per input whose expectation is fully met. Target: 37/41 or more on every supported agent.
 
 ## Day 1 (2026-11-02)
 
@@ -75,6 +75,7 @@ Scoring: 1 point per input whose expectation is fully met. Target: 36/40 or more
 | 38 | tyres done, 380 for all four | tyres task → done, cost recorded, Car Timeline line, no duplicate note |
 | 39 | random thought: should I learn the guitar? | `ideas/` (not goals: not committed yet) |
 | 40 | what am I working on right now? | recall: active goals (half marathon, retirement), routines and open todos, NOT "nothing" |
+| 41 | squats 5x5 at 65kg today, new best | appended to the existing Squats log note Timeline (and `last:` updated). No new note |
 
 ## Final checks
 - `cortex lint` → 0 errors.

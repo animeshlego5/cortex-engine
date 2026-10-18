@@ -13,7 +13,8 @@ Answer from what is actually in the vault, and say where it came from.
 2. **Filter by structure first.** Most questions are list queries. Match on frontmatter:
    - "what should I watch" → `media/` with `status: want` (and `type: movie` or `show`).
    - "what's due" → `todos/` with status `todo` or `doing`, sorted by `due`, PLUS any note in any category whose
-     `due` or other date field (e.g. `next_appointment`, `renews`) falls in the period, PLUS open todos with no due date (listed last).
+     `due` falls in the period, PLUS recurring dates (`day_of_month`, `yearly`) whose next occurrence falls in it,
+     PLUS open todos with no due date or with a `trigger` (listed last, with the trigger).
    - "which card for X" → `finance/` with `type: card` and `status: active`. Read their reward details.
    - "what am I working on / what's going on in my life" → active projects, active goals, active routines, and open todos
      (status `todo`, `doing` or `waiting`) across ALL categories, grouped by goal where links exist. Never answer "nothing"

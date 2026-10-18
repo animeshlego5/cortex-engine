@@ -67,6 +67,7 @@ Confirm in one or two lines what was stored and where, using links. Example:
 List anything flagged `needs_review` or put in the inbox, and ask at most ONE clarifying question if something was truly ambiguous.
 
 ## Corrections
+If the note is already filed the way the user describes, just confirm it ("Already filed as a habit: [[Couch to 5K]]") and change nothing.
 When the user says something was filed wrong ("no, that's a work thing", "that's not a goal, it's a project"):
 1. Fix it: move or retype the note, fix frontmatter and links, run reindex.
 2. Append a line to `_meta/corrections.md` in its format.

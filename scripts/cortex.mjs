@@ -705,6 +705,10 @@ function checkEngine(args) {
 
 function status(vault) {
   const cfg = loadConfig(vault); const cats = loadCategories(vault); const due = isDue(vault, cfg);
+  // an empty daily plan is closed here, so agents don't spend calls on it
+  if (due.daily && planCount(buildPlan(vault)) === 0) {
+    due.state.last_daily = today(); due.state.last_daily_result = 'nothing-to-do'; saveState(vault, due.state); due.daily = false;
+  }
   const { notes, files } = scanVault(vault);
   console.log(`Cortex vault: ${vault}`);
   for (const c of cats) console.log(`  ${c.slug.padEnd(14)} ${String(notes.filter((n) => n.top === c.slug && n.fm.type !== 'hub').length).padStart(4)} notes  (${c.decay})`);
