@@ -1,0 +1,53 @@
+{
+  "auto_commit": true,
+
+  "routing": {
+    "file_confidence": 0.8,
+    "review_confidence": 0.5
+  },
+
+  "categories": {
+    "new_min_items": 3,
+    "new_min_distinct_days": 2,
+    "subfolder_min_notes": 7,
+    "max_depth": 3,
+    "merge_below_notes": 3,
+    "merge_after_days": 60
+  },
+
+  "decay": {
+    "slow": { "warm": 60, "cold": 180, "archive": 365 },
+    "fast": { "warm": 7, "cold": 21, "archive": 45 }
+  },
+
+  "todos": {
+    "archive_done_after_days": 14,
+    "flag_overdue_after_days": 30
+  },
+
+  "journal": {
+    "rollup_after_days": 30
+  },
+
+  "inbox": {
+    "max_items": 20,
+    "max_age_days": 14
+  },
+
+  "maintenance": {
+    "max_items_per_run": 15,
+    "weekly_every_days": 7
+  },
+
+  "relation_types": [
+    "part_of",
+    "depends_on",
+    "supports",
+    "funds",
+    "supersedes",
+    "contradicts",
+    "recommended_by",
+    "decided_in",
+    "relates_to"
+  ]
+}
