@@ -196,7 +196,10 @@ function walk(dir, base, out = []) {
   }
   return out;
 }
+// one scan per process; cleared whenever notes move or hubs are created
+const scanCache = new Map();
 function scanVault(vault) {
+  if (scanCache.has(vault)) return scanCache.get(vault);
   const files = walk(vault, vault);
   const notes = [];
   for (const f of files) {
@@ -216,7 +219,9 @@ function scanVault(vault) {
       typed: typedLinks(body),
     });
   }
-  return { files, notes };
+  const result = { files, notes };
+  scanCache.set(vault, result);
+  return result;
 }
 
 // ---------- access tracking ----------
@@ -270,7 +275,11 @@ function lint(vault) {
   for (const [, rels] of names) if (rels.length > 1) errors.push({ kind: 'duplicate-name', path: rels.join(', '), msg: 'same file name in several places; links are ambiguous' });
 
   const unresolved = new Map();
+  const coreText = fs.existsSync(meta(vault, 'core.md')) ? readText(meta(vault, 'core.md')) : '';
+  const owner = ((coreText.match(/^- Name:[ \t]*([^\n(,]+)/m) || [])[1] || '').trim().toLowerCase();
+  const ownerFirst = owner.split(/\s+/)[0];
   for (const n of notes) {
+    if (owner) for (const tg of n.links) if (tg === owner || tg === ownerFirst) warnings.push({ kind: 'self-link', path: n.rel, msg: `links to the vault owner [[${tg}]]; the owner is _meta/core.md, not a note` });
     const isCatNote = !!catBy[n.top] && n.fm.type !== 'hub';
     const isArchived = n.top === 'archive';
     if (isCatNote) {
@@ -306,6 +315,115 @@ function lint(vault) {
   const unresolvedList = [...unresolved].map(([target, from]) => ({ target, count: from.size, from: [...from].slice(0, 5) }))
     .sort((a, b) => b.count - a.count);
   return { errors, warnings, info, unresolved: unresolvedList };
+}
+
+// ---------- find ----------
+
+// Compact search for agents: frontmatter filters (key=value, key!=value, key~part, key<value, key>value) and/or --text words.
+// Text search also covers journal/ (raw words live there). Prints one line per hit, so agents never need to read whole hubs.
+const FIND_HIDE = new Set(['type', 'category', 'description', 'status', 'created', 'updated', 'aliases', 'tags', 'source', 'needs_review']);
+function find(vault, args) {
+  const json = takeFlag(args, '--json'); const archive = takeFlag(args, '--archive');
+  const limit = Number(takeFlag(args, '--limit', true) || 25); const text = takeFlag(args, '--text', true);
+  const cats = new Set(loadCategories(vault).map((c) => c.slug));
+  const filters = []; let only = null;
+  for (const a of args) { const m = a.match(/^([A-Za-z0-9_-]+)(!=|=|~|<|>)(.*)$/); if (m) filters.push(m.slice(1)); else only = a; }
+  const words = (text || '').toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+  const { notes } = scanVault(vault);
+  // `links` = every outgoing link; a relation name (recommended_by, funds...) = the targets of that typed link
+  const val = (n, k) => {
+    if (k === 'links') return n.links.join(' | ');
+    const typed = n.typed.filter((x) => x.key === k);
+    if (n.fm[k] === undefined && typed.length) return typed.flatMap((x) => x.targets).join(' | ');
+    const v = n.fm[k]; return (Array.isArray(v) ? v.join(' ') : String(v ?? '')).toLowerCase().replace(/\[\[|\]\]/g, '');
+  };
+  const hits = [];
+  for (const n of notes) {
+    if (n.fm.type === 'hub') continue;
+    const okTop = cats.has(n.top) || (archive && n.top === 'archive') || (words.length && !filters.length && n.top === 'journal');
+    if (!okTop || (only && n.top !== only)) continue;
+    if (!filters.every(([k, op, v]) => {
+      const x = val(n, k); v = v.toLowerCase();
+      // `=` and `!=` accept comma-separated alternatives: status=todo,doing
+      return op === '=' ? v.split(',').some((o) => x === o.trim() || x.split(' | ').includes(o.trim()))
+        : op === '!=' ? !v.split(',').some((o) => x === o.trim()) : op === '~' ? x.includes(v) : op === '<' ? (x !== '' && x < v) : (x !== '' && x > v);
+    })) continue;
+    let score = 0;
+    if (words.length) {
+      const name = n.name.toLowerCase(); const desc = val(n, 'description') + ' ' + val(n, 'aliases'); const body = n.body.toLowerCase();
+      let matched = 0;
+      for (const w of words) { const s = (name.includes(w) ? 3 : 0) + (desc.includes(w) ? 2 : 0) + (body.includes(w) ? 1 : 0); if (s) matched++; score += s; }
+      if (!matched) continue;
+      score += matched * 2; // reward notes matching more distinct words
+      if (matched === words.length) score += 100; // notes containing every word come first
+    }
+    const extra = Object.entries(n.fm).filter(([k, v]) => !FIND_HIDE.has(k) && v !== '' && v !== false && !(Array.isArray(v) && !v.length))
+      .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`).join(' ').replace(/\[\[|\]\]/g, '').slice(0, 160);
+    hits.push({ path: n.rel, score, status: n.fm.status || '', updated: asDate(n.fm.updated) || asDate(n.fm.created) || '', description: String(n.fm.description || n.body.replace(/\s+/g, ' ').trim().slice(0, 140)), fields: extra });
+  }
+  hits.sort((a, b) => b.score - a.score || b.updated.localeCompare(a.updated));
+  // text search: if some notes contain every word, show only those; otherwise drop matches far below the best
+  let shown = hits;
+  if (words.length && hits.length) {
+    const all = hits.filter((h) => h.score >= 100);
+    shown = all.length ? all : hits.filter((h) => h.score >= hits[0].score * 0.5);
+  }
+  const out = shown.slice(0, limit);
+  if (json) { console.log(JSON.stringify({ total: shown.length, hits: out }, null, 2)); return; }
+  for (const h of out) console.log(`${h.path} · ${h.status || '-'} · ${h.updated} · ${h.description}${h.fields ? ` · ${h.fields}` : ''}`);
+  console.log(`(${shown.length} match${shown.length === 1 ? '' : 'es'}${shown.length > limit ? `, showing ${limit}; use --limit ${shown.length} for all` : ''}${shown.length < hits.length ? `; ${hits.length - shown.length} weaker matches hidden` : ''})`);
+}
+
+// ---------- graph ----------
+
+// Connections between category notes, ignoring hub links and journal sources (those connect everything trivially).
+function graph(vault) {
+  const cats = new Set(loadCategories(vault).map((c) => c.slug));
+  const { notes } = scanVault(vault);
+  const members = notes.filter((n) => cats.has(n.top) && n.fm.type !== 'hub' && n.fm.status !== 'archived');
+  const byName = new Map(members.map((n) => [n.name.toLowerCase(), n]));
+  const adj = new Map(members.map((n) => [n.rel, new Set()]));
+  let typed = 0;
+  for (const n of members) {
+    for (const t of n.links) {
+      const m = byName.get(t);
+      if (m && m !== n) { adj.get(n.rel).add(m.rel); adj.get(m.rel).add(n.rel); }
+    }
+    typed += n.typed.filter((x) => x.key !== 'part_of' || !x.targets.every((tg) => tg.startsWith('hub - '))).length;
+  }
+  const edges = [...adj.values()].reduce((s, v) => s + v.size, 0) / 2;
+  const topOf = (rel) => rel.split('/')[0];
+  let cross = 0;
+  for (const [a, set] of adj) for (const b of set) if (a < b && topOf(a) !== topOf(b)) cross++;
+  const seen = new Set(); const comps = [];
+  for (const start of adj.keys()) {
+    if (seen.has(start)) continue;
+    const stack = [start]; let size = 0; seen.add(start);
+    while (stack.length) { const x = stack.pop(); size++; for (const y of adj.get(x)) if (!seen.has(y)) { seen.add(y); stack.push(y); } }
+    comps.push(size);
+  }
+  comps.sort((a, b) => b - a);
+  const isolated = members.filter((n) => adj.get(n.rel).size === 0).map((n) => n.rel);
+  const top = [...adj].map(([rel, s]) => ({ note: path.basename(rel, '.md'), degree: s.size })).sort((a, b) => b.degree - a.degree).slice(0, 10);
+  const perCat = {};
+  for (const n of members) {
+    const c = (perCat[n.top] ||= { notes: 0, isolated: 0 });
+    c.notes++; if (adj.get(n.rel).size === 0) c.isolated++;
+  }
+  return {
+    notes: members.length, connections: edges, typed_links: typed, cross_category: cross,
+    avg_links_per_note: members.length ? +(2 * edges / members.length).toFixed(2) : 0,
+    clusters: comps.length, largest_cluster: comps[0] || 0,
+    largest_cluster_pct: members.length ? Math.round(100 * (comps[0] || 0) / members.length) : 0,
+    isolated, top, per_category: perCat,
+  };
+}
+function printGraph(g) {
+  console.log(`Notes: ${g.notes} · connections: ${g.connections} (${g.cross_category} across categories) · avg ${g.avg_links_per_note} links/note`);
+  console.log(`Clusters: ${g.clusters} · largest: ${g.largest_cluster} notes (${g.largest_cluster_pct}%) · isolated (only a hub link): ${g.isolated.length}`);
+  console.log(`Most connected: ${g.top.filter((x) => x.degree).map((x) => `${x.note} (${x.degree})`).join(', ') || 'none'}`);
+  for (const [c, v] of Object.entries(g.per_category)) console.log(`  ${c.padEnd(14)} ${String(v.notes).padStart(4)} notes, ${v.isolated} isolated`);
+  if (g.isolated.length) console.log(`Isolated: ${g.isolated.slice(0, 15).join(', ')}${g.isolated.length > 15 ? ` (+${g.isolated.length - 15} more)` : ''}`);
 }
 
 // ---------- plan ----------
@@ -372,7 +490,7 @@ function buildPlan(vault) {
       }
       continue;
     }
-    if (['project', 'goal'].includes(n.fm.type) && status === 'active') continue;
+    if (['project', 'goal', 'routine'].includes(n.fm.type) && status === 'active') continue;
     const th = dc[cat.decay];
     if (!th) continue;
     if (age >= th.archive) {
@@ -411,6 +529,7 @@ function buildPlan(vault) {
     plan.unresolved_links = l.unresolved.filter((u) => u.count >= 2).slice(0, 20);
     const corr = fs.existsSync(meta(vault, 'corrections.md')) ? readText(meta(vault, 'corrections.md')).split(/\r?\n/).filter((x) => /^- \d{4}-/.test(x) && !x.includes('-> applied')) : [];
     plan.open_corrections = corr.length;
+    plan.isolated = graph(vault).isolated.slice(0, 10);
   }
   return plan;
 }
@@ -434,6 +553,7 @@ function planMarkdown(p) {
   sec('Review: journal months to roll up', p.journal_rollup, (x) => `- ${x.month} (${x.files} days)`);
   sec('Review: small categories to consider merging', p.merge_proposals, (x) => `- ${x.slug}: ${x.notes} notes since ${x.created}`);
   sec('Review: names linked from several notes with no note yet', p.unresolved_links, (x) => `- [[${x.target}]] ×${x.count}`);
+  sec('Review: notes with no connections (suggest real links, or leave them)', p.isolated, (x) => `- ${x}`);
   if (p.open_corrections) L.push(`Review: ${p.open_corrections} unapplied corrections in _meta/corrections.md`, '');
   if (planCount(p) === 0) L.push('Nothing to do. The vault is tidy.');
   return L.join('\n') + '\n';
@@ -458,6 +578,7 @@ function replaceBlock(text, tag, content) {
   return text.slice(0, i + start.length) + `\n${content}\n` + text.slice(j);
 }
 function reindex(vault) {
+  scanCache.clear();
   const cats = loadCategories(vault);
   if (!cats.length) fail('no categories found in _meta/categories.md');
   for (const c of cats) {
@@ -465,6 +586,7 @@ function reindex(vault) {
     const hub = path.join(vault, c.slug, `${hubName(c)}.md`);
     if (!fs.existsSync(hub)) fs.writeFileSync(hub, hubTemplate(c));
   }
+  scanCache.clear();
   const { notes, files } = scanVault(vault);
   const rows = [];
   for (const c of cats) {
@@ -475,7 +597,7 @@ function reindex(vault) {
     for (const [type, arr] of [...byType].sort()) {
       lines.push(`### ${type} (${arr.length})`);
       arr.sort((a, b) => String(a.fm.status).localeCompare(String(b.fm.status)) || a.name.localeCompare(b.name));
-      for (const n of arr) lines.push(`- [[${n.name}]] · ${n.fm.status || '?'}${n.fm.description ? ` · ${String(n.fm.description).replace(/\s+/g, ' ')}` : ''}`);
+      for (const n of arr) lines.push(`- [[${n.name}]] · ${n.fm.status || '?'}${asDate(n.fm.due) ? ` · due ${asDate(n.fm.due)}` : ''}${n.fm.last ? ` · last: ${n.fm.last}` : ''}${n.fm.description ? ` · ${String(n.fm.description).replace(/\s+/g, ' ')}` : ''}`);
       lines.push('');
     }
     const hub = path.join(vault, c.slug, `${hubName(c)}.md`);
@@ -501,6 +623,7 @@ function moveNote(vault, rel, destRel, mutate) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, mutate(readText(src)));
   fs.unlinkSync(src);
+  scanCache.clear();
   const access = loadAccess(vault);
   if (access[rel]) { access[destRel] = access[rel]; delete access[rel]; writeJson(meta(vault, 'access.json'), access); }
 }
@@ -732,6 +855,9 @@ Usage: node .engine/scripts/cortex.mjs <command> [--vault <path>]
   plan                     write _meta/maintenance-plan.md/.json (cleanup proposals only)
   reindex                  rebuild hub catalogs + index.md; create folders/hubs for new categories
   lint [--json]            check note format, links, duplicates, possible secrets
+  graph [--json]           how notes connect: clusters, isolated notes, most-linked notes
+  find [category] [key=value ...] [--text "words"] [--limit N] [--archive] [--json]
+                           search notes by frontmatter (=, !=, ~ contains, <, >) and/or ranked text (text also searches journal/)
   archive <path...>        move notes to archive/<category>/ and mark archived
   restore <path...>        move archived notes back to their category
   touch <path...>          mark notes as used (resets decay)
@@ -764,6 +890,8 @@ function main() {
   switch (cmd) {
     case 'status': return status(vault);
     case 'plan': { takeFlag(args, '--weekly'); const p = writePlan(vault); console.log(planMarkdown(p)); return; }
+    case 'find': return find(vault, args);
+    case 'graph': { const g = graph(vault); if (takeFlag(args, '--json')) console.log(JSON.stringify(g, null, 2)); else printGraph(g); return; }
     case 'reindex': { const r = reindex(vault); console.log(`Reindexed ${r.categories} categories, ${r.notes} notes.`); return; }
     case 'lint': {
       const json = takeFlag(args, '--json'); const r = lint(vault);

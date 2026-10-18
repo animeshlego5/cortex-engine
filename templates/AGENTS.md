@@ -65,10 +65,12 @@ Run from the vault root: `node .engine/scripts/cortex.mjs <command>`
 
 | Command | Does |
 |---|---|
-| `status` | Shows counts, inbox candidates, and whether maintenance is due |
+| `status` | Shows counts, inbox candidates, onboarding and cleanup due. If a due cleanup has nothing to do, it records it as done |
 | `plan` | Writes `_meta/maintenance-plan.md/.json` (what the weekly cleanup proposes) |
 | `reindex` | Rebuilds hub catalogs and `index.md`, and creates folders and hubs for new categories |
+| `find [category] [key=value ...] [--text "words"]` | Searches notes by field or ranked text (text also covers the journal). Use this before reading files |
 | `lint` | Reports broken links, missing fields, duplicate names, unknown relation types |
+| `graph` | Shows how notes connect: clusters, isolated notes, most-linked notes |
 | `archive <path...>` | Moves notes to `archive/<category>/` and marks them archived |
 | `touch <path...>` | Marks notes as recently used (prevents decay) |
 | `done cleanup\|onboarding [--skipped]` | Records that the cleanup ran (or was skipped), or that onboarding finished |

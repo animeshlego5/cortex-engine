@@ -9,7 +9,21 @@ Answer from what is actually in the vault, and say where it came from.
 
 ## Steps
 
-1. **Orient.** Read `index.md` to see the categories, then the relevant `Hub - <Name>.md`. Hubs list every note with its description and status.
+Search with `node .engine/scripts/cortex.mjs find ...`. It prints one line per note (path · status · updated · description · other fields like `due=` or `size=`),
+so you never have to read whole folders or big hubs. Examples:
+- `find media status=want type=movie`: the watchlist
+- `find todos status!=done "due<2026-11-20"`: open todos due before a date
+- `find finance type=card status=active`: active cards
+- `find recommended_by=sam`: everything Sam recommended (any relation name works: `funds~house`, `supports="run a marathon"`)
+- `find links~sam`: every note that links to Sam in any way
+- Relation filters match the note that HOLDS the link: "what funds the house goal?" is `find finance funds~house`, not a search in `goals/`.
+- For counts, read the "(N matches)" footer; for full lists use `--limit <N>`.
+- `find todos status=todo,doing`: comma = OR
+- `find --text "boiler plumber"`: ranked full-text search across all notes AND the journal
+- add `--archive` to include archived notes, and `--limit 50` for more lines
+If `node` is missing, use `index.md`, the hubs and grep instead.
+
+1. **Orient.** Read `index.md` to see the categories. Read a `Hub - <Name>.md` only if the category is small (under about 150 notes). Otherwise use `find`.
 2. **Filter by structure first.** Most questions are list queries. Match on frontmatter:
    - "what should I watch" → `media/` with `status: want` (and `type: movie` or `show`).
    - "what's due" → `todos/` with status `todo` or `doing`, sorted by `due`, PLUS any note in any category whose
@@ -19,13 +33,15 @@ Answer from what is actually in the vault, and say where it came from.
    - "what am I working on / what's going on in my life" → active projects, active goals, active routines, and open todos
      (status `todo`, `doing` or `waiting`) across ALL categories, grouped by goal where links exist. Never answer "nothing"
      just because `projects/` is empty.
-   Use grep or ripgrep on frontmatter lines (e.g. `rg -l "^status: want" media/`) rather than reading every file.
-3. **Search text second.** For fuzzy questions ("that thing about tax I mentioned"), full-text search the vault with several phrasings, synonyms and likely names. Include `journal/` for when or how something was said.
+   Use `find` with field filters for these.
+3. **Search text second.** For fuzzy questions ("that thing about tax I mentioned"), run `find --text` with 2-3 phrasings, synonyms and likely names.
+   It covers `journal/`, which holds the raw words, so it answers "when did I say..." and facts that were never filed as notes.
 4. **Follow links.** Read the matching notes and follow `## Related` and wikilinks up to 2 hops for context (e.g. movie → who recommended it, investment → goal it funds).
 5. **Archive last.** Only search `archive/` if steps 1-4 found nothing, or the user asks about the past ("what card did I have before?"). Also check Timelines for history.
 6. **Answer.**
    - Lead with the answer, personalised. "Watch **Spider-Man Across the Spider-Verse**. You added it on 17 Oct and Sam recommended it."
-   - When suggesting from a list, pick 1-3 and say why (recency, who recommended it, mood fit, rating notes), then offer the rest.
+   - When suggesting from a list, pick 1-3 and say why (recency, who recommended it, fit with `## Interests and taste` in `_meta/core.md`, `genre`, favourites), then offer the rest.
+   - If the answer was found only in `journal/` (never filed as a note), answer it, then offer to file it properly.
    - Cite notes as `[[links]]`.
    - If nothing is stored, say so plainly. Never invent facts about the user. Offer to save the answer if they tell you.
 7. **Learn from the question.** If the answer led to a decision ("ok I'll watch it tonight"), that is new information. Use cortex-capture to update the note (e.g. status `in-progress`).

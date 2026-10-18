@@ -129,6 +129,8 @@ And:
 - **When you create an entity note, upgrade earlier mentions.** Search for `[[Name]]` in other notes. Where a typed relation fits
   (e.g. the movie Sam recommended), add the typed line to that note's `## Related`.
 
+- **Parts link to their whole.** A task, decision or sub-item that belongs to a project links to it with `part_of:: [[Project]]`; anything serving a goal links with `supports::` or `funds::`. A mention in prose or in a Timeline line is not enough, because `cortex find todos part_of="<project>"` relies on the typed line.
+- **Never link the user.** The vault owner is `_meta/core.md`, not a note. Write "the user" or "I", never `[[<their name>]]` (lint warns about it).
 - **Cross-category connections go through entities.** A movie Sam recommended and a job tip from Sam are connected because both link `[[Sam]]`. Do not link the movie to the job tip directly.
 - **One fact, one place.** If a fact belongs to another note (Sam's phone number belongs in `Sam.md`), put it there and link to it. Do not copy it.
 - **Links go one way.** Write the link on the note that is doing the relating (the investment `funds::` the goal; the goal does not list its investments). Obsidian shows backlinks automatically, and agents find reverse links by searching for `[[Target]]`. Never add a reverse line just to make the graph symmetric.
@@ -153,6 +155,10 @@ Otherwise, a one-off mention stays a plain `[[wikilink]]` (or plain text) inside
 (`- 2026-11-05: 5x5 at 60kg`). Never one note per session. That would create endless near-duplicate names.
 Put the latest value in frontmatter (`last: "5x5 at 60kg"`) so recall can answer without reading the log.
 
+**Measurements of the user** (sleep, weight, mood, spending per month) are logs too: one note per measure (`Sleep`, in the category that fits, usually `todos/` as type `routine` or a tracking category the user asked for), with `supports::` the related goal.
+
+**Taste.** Media notes get `genre: [...]` when known. Things the user already loves ("Arrival is my favourite film") become media notes with status `done` and `rating: favourite`, so recall can suggest similar things.
+
 **Things the user owns** (car, flat, laptop, pet) get one note in `things/` as soon as the user states a lasting fact or a task about them.
 Tasks, costs and insurance about the thing live in their own categories and link to it with `relates_to::`.
 
@@ -161,6 +167,7 @@ Tasks, costs and insurance about the thing live in their own categories and link
 Before creating any note, search for it (file names, `aliases`, and full text for the key words). If it exists:
 - Update its frontmatter to the new current state and bump `updated`.
 - Append a `## Timeline` line describing the change.
+- If the summary paragraph or `description` no longer matches the current state, rewrite them (they describe NOW; history lives in the Timeline).
 - Add any new aliases the user used. Aliases are NAMES ("Alex", "Alex Kim"), never roles ("my manager"), because roles change.
   Roles and relationships go in frontmatter (`role:`, `relationship:`) and the Timeline.
 - Never overwrite history. If the new fact contradicts an old one without being a clear update (e.g. two different birthdays), keep both, add `contradicts::`, and ask the user.

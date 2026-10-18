@@ -4,6 +4,28 @@
 - One weekly cleanup instead of daily maintenance plus a separate weekly review. It runs at most once every `maintenance.every_days` (7) days and includes the review proposals (corrections into rules, merges, journal rollups). The `cortex-weekly-review` skill is folded into `cortex-maintenance`. `done cleanup` replaces `done daily|weekly` (old forms still accepted).
 - New `cortex-onboarding` skill: a first-session interview (name, age, city, currency, work, people, goals, interests, owned things, money setup, reply preferences) that fills `core.md` and seeds notes. `status` and the hook flag new vaults until `done onboarding`.
 - `core.md` template gains age, work and an interests section.
+- From the onboarding and scale tests:
+  - **`cortex find`**: field filters (`=` with comma alternatives, `!=`, `~`, `<`, `>`), relation and link filters (`recommended_by=sam`, `links~sam`), and ranked `--text` search that also covers the journal.
+    Text search shows only notes containing every word, and each result line includes the note's extra fields (`size=`, `due=`). Recall uses it instead of reading big hubs.
+  - **`cortex graph`**: clusters, isolated notes and most-connected notes. The weekly cleanup lists isolated notes for possible links.
+  - **Speed**: the vault is scanned once per command. The cleanup plan on 5,000 notes went from 4.8 s to 0.3 s.
+  - `tests/generate-vault.mjs` builds synthetic vaults with planted "needle" facts.
+  - Linking rules:
+    - Parts link to their whole with typed lines (`part_of`, `supports`, `funds`).
+    - Never link the vault owner. Lint warns about self-links.
+    - Summaries and descriptions are rewritten when the current state changes.
+  - Measurements are log notes. Media notes get `genre`, and favourites are stored as `rating: favourite`.
+  - Active routines never decay. Hub catalog lines show `due` and `last`.
+  - Onboarding:
+    - Greets straight away on a bare "hi".
+    - Asks what close people love, which helps with gift ideas.
+    - Allows amounts and prices (only account, card and ID numbers are secret).
+    - Seeds favourites.
+  - Recall:
+    - Explains which side of a relation a filter matches.
+    - Uses the match count for counting questions.
+    - Matches suggestions to the user's taste.
+    - Offers to file facts it finds only in the journal.
 - From the first 40-input test run:
   - New `things` seed category. One owned thing (car, flat, laptop) is now an entity note that tasks and costs link to, not a new category.
   - "Purposes are goals": "for retirement" creates or links a goal.

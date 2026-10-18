@@ -31,7 +31,8 @@ One message often holds several items. List each separately: a fact, a task, a p
 Skip chit-chat and questions addressed to you. Trivial routines ("drink water") stay only in the journal (note-format.md section 8).
 
 ### 3. For each item, find before you create
-Search the vault for an existing note: file names, `aliases:`, and full-text for the key nouns (try 2-3 phrasings and spellings).
+Search the vault for an existing note: `node .engine/scripts/cortex.mjs find --text "<key nouns>" --archive` (matches names, aliases,
+descriptions and text). Try 2-3 phrasings and spellings. Without node, grep file names, `aliases:` and text.
 Check `archive/` too. If the thing was archived and is now relevant again, move it back to its category and set its status.
 - **Found** → update it (note-format.md section 7). Go to step 6.
 - **Not found** → continue.

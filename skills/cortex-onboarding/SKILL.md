@@ -9,16 +9,17 @@ A friendly interview of about 5 minutes. Ask in **rounds of 3-4 questions**, not
 Accept loose answers and voice-style rambling. Never ask for secrets (card numbers, account numbers, ID numbers, passwords).
 
 ## 0. Offer it
-If the user's first message was a real request, handle it first. Then say: "This is a new Cortex vault. Can I ask a few quick questions
+If the first message is just a greeting, offer the interview right away. If it was a real request, handle it first. Then say: "This is a new Cortex vault. Can I ask a few quick questions
 so I file things the way you'd expect? About 5 minutes, and you can skip anything." On no or later, do not ask again this session.
 
 ## 1. The rounds
 1. **Basics**: name (and what to call them), age or birth year, city and country (gives the timezone), currency, languages.
-2. **Life**: what they do (work or study, role, workplace), who they live with, the close people they will mention often (names and relationships).
+2. **Life**: what they do (work or study, role, workplace), who they live with (pets too), the close people they will mention often (names, relationships, and anything those people love: handy for gift ideas later).
 3. **Direction**: 2-4 things they are working towards this year (health, money, career, learning, relationships), and any active projects.
 4. **Taste**: interests and hobbies; the kinds of films, shows, books, music or games they like; any watch, read or play list they already have in mind.
-5. **Life admin** (optional, no numbers): things they own and look after (vehicle, home, devices, pets); a rough money setup (which cards, what investment types,
-   recurring subscriptions; names only, never numbers); recurring dates that matter (birthdays, renewals).
+5. **Life admin** (optional): things they own and look after (vehicle, home, devices, pets); their money setup (which cards and their reward highlights,
+   investments and monthly amounts, subscriptions and prices); recurring dates that matter (birthdays, renewals, check-ups).
+   Amounts and prices are fine and useful. Only account, card and ID NUMBERS are secrets.
 6. **Preferences**: how they want replies (short or detailed), whether to confirm before filing or just file, and anything Cortex should always or never do.
 
 After each round, briefly reflect back what you understood (one line) before the next round.
@@ -27,7 +28,7 @@ After each round, briefly reflect back what you understood (one line) before the
 - `_meta/core.md`: fill About me (name, age, location and timezone, currency, languages, work), Close people (as `[[links]]`), Current priorities (as `[[links]]`).
 - Notes, created with cortex-capture rules (note-format.md): a `people/` note per close person (relationship, birthday as `yearly:`), a `goals/` note per goal,
   a `projects/` note per active project, a `things/` note per owned thing, `finance/` notes per card, investment or subscription mentioned (names and
-  facts only), and a `media/` note (status `want`) per title on their list. Link them: goals ↔ projects with `supports::`, investments with `funds::`.
+  facts only), a `media/` note (status `want`) per title on their list, and a `media/` note (status `done`, `rating: favourite`, with `genre`) per favourite they name. Link them: goals ↔ projects with `supports::`, investments with `funds::`.
 - Interests and tastes go in `_meta/core.md` under a `## Interests and taste` section (recall uses it for "what should I watch or read?").
 - Reply preferences and always/never rules go in `_meta/my-rules.md`.
 - Categories: do NOT invent categories from interests alone. Create one only if the user explicitly wants to TRACK something
