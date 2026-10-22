@@ -83,10 +83,15 @@ You never need to touch the folders, but if you're curious: each category is a f
 | Where | How |
 |---|---|
 | Desktop, typing | Run your agent in the vault folder and type. |
+| Desktop, one click (Windows) | Install the Claude Code CLI (`irm https://claude.ai/install.ps1 \| iex`), then run `node .engine/scripts/cortex.mjs shortcut` in the vault. A **Cortex** icon appears on the Desktop that opens Claude Code in the vault in Windows Terminal. No editor needed. |
 | Desktop, voice | Claude Code: `/voice tap`, then tap Space, speak, tap Space. Built in, no extra cost. |
 | Phone (PC on) | Run `claude --remote-control` in the vault on your PC, then open that session from the Claude app's **Code** tab and dictate with your keyboard mic. Notes stay on your PC. |
 | Phone (PC off) | Only if you choose to put the vault in a private GitHub repo: open it in a Claude app cloud session. This sends your notes to GitHub, so Cortex doesn't set it up for you. |
 | Anything else | Drop a `.md` or `.txt` file into `inbox/` (sync app, email-to-file, shortcuts). It gets filed in the next session. |
+
+**Notifications**: in Claude Code, a desktop notification pops up when Cortex finishes a reply ("Cortex: done") and when it needs
+your answer or permission ("Cortex: needs you"). Windows shows them bottom-right, macOS in Notification Center, Linux via `notify-send`.
+Turn either off in `_meta/config.json`: `"notifications": { "done": false, "needs_input": true }`.
 
 ## Updating
 

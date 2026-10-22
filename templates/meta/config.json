@@ -1,6 +1,11 @@
 {
   "auto_commit": true,
 
+  "notifications": {
+    "done": true,
+    "needs_input": true
+  },
+
   "routing": {
     "file_confidence": 0.8,
     "review_confidence": 0.5

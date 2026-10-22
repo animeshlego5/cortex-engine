@@ -6,7 +6,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync, spawnSync } from 'node:child_process';
+import os from 'node:os';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SYSTEM_DIRS = new Set(['inbox', 'journal', 'archive', 'private', '_meta', '.engine', '.git', '.obsidian', '.trash', '.claude', '.agents', '.codex', 'node_modules']);
@@ -690,6 +691,38 @@ function hookRead(vault) {
   if (fp) touchPaths(vault, [fp]);
 }
 
+// Desktop notification when the agent finishes a reply (Stop) or needs you (Notification).
+// Text goes through env vars, never into the script source, so note content can't inject commands.
+const WIN_TOAST = `
+[void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime]
+[void][Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType=WindowsRuntime]
+$e = [Security.SecurityElement]
+$x = New-Object Windows.Data.Xml.Dom.XmlDocument
+$x.LoadXml("<toast><visual><binding template='ToastGeneric'><text>$($e::Escape($env:CORTEX_TOAST_TITLE))</text><text>$($e::Escape($env:CORTEX_TOAST_BODY))</text></binding></visual></toast>")
+$app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe'
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($x))`;
+function showNotification(title, body) {
+  const env = { ...process.env, CORTEX_TOAST_TITLE: title, CORTEX_TOAST_BODY: body };
+  let cmd; let args;
+  if (process.platform === 'win32') { cmd = 'powershell.exe'; args = ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', Buffer.from(WIN_TOAST, 'utf16le').toString('base64')]; }
+  else if (process.platform === 'darwin') { cmd = 'osascript'; args = ['-e', 'display notification (system attribute "CORTEX_TOAST_BODY") with title (system attribute "CORTEX_TOAST_TITLE")']; }
+  else { cmd = 'notify-send'; args = [title, body]; }
+  // detached so the hook returns at once instead of waiting for PowerShell to start
+  spawn(cmd, args, { env, detached: true, stdio: 'ignore', windowsHide: true }).unref();
+}
+function hookNotify(vault, event) {
+  let input = {}; try { input = JSON.parse(readStdin() || '{}'); } catch {}
+  const n = loadConfig(vault).notifications || {};
+  const oneLine = (s, max) => { const t = String(s || '').replace(/[`*_#>[\]]/g, '').replace(/\s+/g, ' ').trim(); return t.length > max ? t.slice(0, max - 1) + '…' : t; };
+  if (event === 'stop') {
+    if (n.done === false || input.stop_hook_active) return;
+    showNotification('Cortex: done', oneLine(input.last_assistant_message, 180) || 'Claude finished. Your notes are filed.');
+  } else {
+    if (n.needs_input === false) return;
+    showNotification('Cortex: needs you', oneLine(input.message, 180) || 'Claude is waiting for your input.');
+  }
+}
+
 // ---------- setup ----------
 
 const GITIGNORE_LINES = ['.engine', 'private/', '.trash/', '_meta/maintenance-plan.json', '_meta/maintenance-plan.md', '.obsidian/workspace*.json', '.obsidian/cache', '.DS_Store', 'Thumbs.db'];
@@ -746,6 +779,8 @@ function setup(vault) {
   const settings = readJson(cs, {});
   mergeHooks(settings, 'UserPromptSubmit', { type: 'command', command: 'node', args: [scriptArg, 'hook', 'prompt'], timeout: 15 });
   mergeHooks(settings, 'PostToolUse', { type: 'command', command: 'node', args: [scriptArg, 'hook', 'read'], timeout: 10 }, 'Read');
+  mergeHooks(settings, 'Stop', { type: 'command', command: 'node', args: [scriptArg, 'hook', 'stop'], timeout: 10 });
+  mergeHooks(settings, 'Notification', { type: 'command', command: 'node', args: [scriptArg, 'hook', 'notify'], timeout: 10 });
   settings.permissions = settings.permissions || {};
   const deny = new Set(settings.permissions.deny || []);
   for (const r of ['Read(./private/**)', 'Edit(./private/**)']) deny.add(r);
@@ -788,6 +823,38 @@ function init(args) {
   console.log(existing
     ? `\nRe-linked ${vault}/.engine -> ${ENGINE}`
     : `\nVault ready at ${vault} (.engine -> ${ENGINE})\nNext: open a terminal in the vault and run your agent (e.g. \`claude\`). Optionally open the folder in Obsidian.\nThe vault's git history is local only. Your notes are never pushed anywhere unless you add a remote yourself.`);
+}
+
+// ---------- desktop shortcut (Windows) ----------
+
+// A Desktop icon that opens Claude Code in the vault, in Windows Terminal when installed, so no editor is needed.
+const WIN_SHORTCUT = `
+$lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Cortex.lnk'))
+$lnk.TargetPath = $env:CORTEX_LNK_TARGET
+$lnk.Arguments = $env:CORTEX_LNK_ARGS
+$lnk.WorkingDirectory = $env:CORTEX_VAULT
+$lnk.IconLocation = "$env:CORTEX_CLAUDE,0"
+$lnk.Description = 'Open Claude Code in the Cortex vault'
+$lnk.Save()
+$lnk.FullName`;
+function shortcut(vault) {
+  if (process.platform !== 'win32') fail(`shortcut is Windows-only. Elsewhere, add a shell alias: alias cortex='cd "${vault}" && claude'`);
+  let claude = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
+  if (!fs.existsSync(claude)) {
+    const r = spawnSync('where.exe', ['claude'], { encoding: 'utf8' });
+    claude = (r.stdout || '').split(/\r?\n/).find((l) => /\.(exe|cmd)$/i.test(l.trim()))?.trim();
+    if (!claude) fail('Claude Code CLI not found. Install it first: irm https://claude.ai/install.ps1 | iex');
+  }
+  const wt = path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WindowsApps', 'wt.exe');
+  let useWt = false; try { fs.lstatSync(wt); useWt = true; } catch {} // an app execution alias: existsSync can't follow it
+  const env = {
+    ...process.env, CORTEX_VAULT: vault, CORTEX_CLAUDE: claude,
+    CORTEX_LNK_TARGET: useWt ? wt : claude,
+    CORTEX_LNK_ARGS: useWt ? `-d "${vault}" --title Cortex "${claude}"` : '',
+  };
+  const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(WIN_SHORTCUT, 'utf16le').toString('base64')], { env, encoding: 'utf8' });
+  if (r.status !== 0) fail(`could not create the shortcut: ${(r.stderr || '').trim()}`);
+  console.log(`Created ${r.stdout.trim()} (opens ${useWt ? 'Windows Terminal' : 'Claude Code'} in ${vault}).`);
 }
 
 // ---------- engine safety check (run before pushing the engine repo) ----------
@@ -863,7 +930,8 @@ Usage: node .engine/scripts/cortex.mjs <command> [--vault <path>]
   touch <path...>          mark notes as used (resets decay)
   done cleanup|onboarding [--skipped]   record that the weekly cleanup ran (or was skipped), or that onboarding finished
   setup                    create missing vault files and regenerate engine-owned files
-  hook prompt|read         used by agent hooks; reads JSON on stdin
+  shortcut                 Windows: put a Cortex icon on the Desktop that opens Claude Code in this vault
+  hook prompt|read|stop|notify   used by agent hooks; reads JSON on stdin
 
 Run from the cortex-engine folder (node scripts/cortex.mjs ...):
   init <folder> [--no-git] create a vault linked to this engine (or re-link an existing vault)
@@ -877,7 +945,7 @@ function main() {
   if (cmd === 'check-engine') return checkEngine(args);
   if (cmd === 'hook') {
     // hooks must never break the agent: stay silent outside a vault and swallow every error
-    try { const vault = resolveVault(args, { quiet: true }); if (!vault) return; const which = args[0]; if (which === 'prompt') hookPrompt(vault); else if (which === 'read') hookRead(vault); } catch {}
+    try { const vault = resolveVault(args, { quiet: true }); if (!vault) return; const which = args[0]; if (which === 'prompt') hookPrompt(vault); else if (which === 'read') hookRead(vault); else if (which === 'stop' || which === 'notify') hookNotify(vault, which); } catch {}
     return;
   }
   const vault = resolveVault(args);
@@ -889,6 +957,7 @@ function main() {
   if (!fs.existsSync(meta(vault, 'categories.md'))) fail(`${vault} is not set up yet. Run: node .engine/scripts/cortex.mjs setup`);
   switch (cmd) {
     case 'status': return status(vault);
+    case 'shortcut': return shortcut(vault);
     case 'plan': { takeFlag(args, '--weekly'); const p = writePlan(vault); console.log(planMarkdown(p)); return; }
     case 'find': return find(vault, args);
     case 'graph': { const g = graph(vault); if (takeFlag(args, '--json')) console.log(JSON.stringify(g, null, 2)); else printGraph(g); return; }
