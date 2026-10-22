@@ -75,6 +75,7 @@ Run from the vault root: `node .engine/scripts/cortex.mjs <command>`
 | `touch <path...>` | Marks notes as recently used (prevents decay) |
 | `done cleanup\|onboarding [--skipped]` | Records that the cleanup ran (or was skipped), or that onboarding finished |
 | `setup` | Regenerates the files generated from the engine. Safe to re-run |
+| `notify "<title>" "<message>"` | Pops up a desktop notification (Windows bottom-right). Use it for reminders: when a scheduled reminder fires, run this rather than a built-in push tool, which only reaches the terminal |
 
 If Node is not installed, do the same work by hand following the skills. It is slower but everything still works.
 

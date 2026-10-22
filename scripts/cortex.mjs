@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
-import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SYSTEM_DIRS = new Set(['inbox', 'journal', 'archive', 'private', '_meta', '.engine', '.git', '.obsidian', '.trash', '.claude', '.agents', '.codex', 'node_modules']);
@@ -707,8 +707,8 @@ function showNotification(title, body) {
   if (process.platform === 'win32') { cmd = 'powershell.exe'; args = ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', Buffer.from(WIN_TOAST, 'utf16le').toString('base64')]; }
   else if (process.platform === 'darwin') { cmd = 'osascript'; args = ['-e', 'display notification (system attribute "CORTEX_TOAST_BODY") with title (system attribute "CORTEX_TOAST_TITLE")']; }
   else { cmd = 'notify-send'; args = [title, body]; }
-  // detached so the hook returns at once instead of waiting for PowerShell to start
-  spawn(cmd, args, { env, detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  // must run in the foreground: a detached PowerShell on Windows exits without showing the toast
+  spawnSync(cmd, args, { env, stdio: 'ignore', windowsHide: true, timeout: 8000 });
 }
 function hookNotify(vault, event) {
   let input = {}; try { input = JSON.parse(readStdin() || '{}'); } catch {}
@@ -931,6 +931,7 @@ Usage: node .engine/scripts/cortex.mjs <command> [--vault <path>]
   done cleanup|onboarding [--skipped]   record that the weekly cleanup ran (or was skipped), or that onboarding finished
   setup                    create missing vault files and regenerate engine-owned files
   shortcut                 Windows: put a Cortex icon on the Desktop that opens Claude Code in this vault
+  notify "<title>" "<message>"   show a desktop notification now (for reminders)
   hook prompt|read|stop|notify   used by agent hooks; reads JSON on stdin
 
 Run from the cortex-engine folder (node scripts/cortex.mjs ...):
@@ -958,6 +959,7 @@ function main() {
   switch (cmd) {
     case 'status': return status(vault);
     case 'shortcut': return shortcut(vault);
+    case 'notify': if (!args[0]) fail('usage: cortex notify "<title>" "<message>"'); showNotification(args[0], args[1] || ''); return;
     case 'plan': { takeFlag(args, '--weekly'); const p = writePlan(vault); console.log(planMarkdown(p)); return; }
     case 'find': return find(vault, args);
     case 'graph': { const g = graph(vault); if (takeFlag(args, '--json')) console.log(JSON.stringify(g, null, 2)); else printGraph(g); return; }

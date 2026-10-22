@@ -1,7 +1,8 @@
 # Changelog
 
 ## Unreleased
-- **Desktop notifications** (Claude Code): new `Stop` and `Notification` hooks (`hook stop|notify`) pop up a native notification when a reply finishes or the agent needs input. Windows toast, macOS Notification Center, Linux `notify-send`. Toggle with `notifications.done` / `notifications.needs_input` in `_meta/config.json`.
+- **Desktop notifications** (Claude Code): new `Stop` and `Notification` hooks (`hook stop|notify`) pop up a native notification when a reply finishes or the agent needs input. Windows toast, macOS Notification Center, Linux `notify-send`. Toggle with `notifications.done` / `notifications.needs_input` in `_meta/config.json`. The notifier runs in the foreground, because a detached PowerShell on Windows exits without showing the toast.
+- **`cortex notify "<title>" "<message>"`**: shows a desktop notification on demand. `AGENTS.md` tells agents to use it when a scheduled reminder fires, since Claude Code's built-in push only reaches the terminal.
 - **`cortex shortcut`** (Windows): creates a Desktop **Cortex** icon that opens Claude Code in the vault via Windows Terminal, so capturing doesn't need an editor open.
 - One weekly cleanup instead of daily maintenance plus a separate weekly review. It runs at most once every `maintenance.every_days` (7) days and includes the review proposals (corrections into rules, merges, journal rollups). The `cortex-weekly-review` skill is folded into `cortex-maintenance`. `done cleanup` replaces `done daily|weekly` (old forms still accepted).
 - New `cortex-onboarding` skill: a first-session interview (name, age, city, currency, work, people, goals, interests, owned things, money setup, reply preferences) that fills `core.md` and seeds notes. `status` and the hook flag new vaults until `done onboarding`.
