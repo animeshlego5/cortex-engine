@@ -75,7 +75,8 @@ Run from the vault root: `node .engine/scripts/cortex.mjs <command>`
 | `touch <path...>` | Marks notes as recently used (prevents decay) |
 | `done cleanup\|onboarding [--skipped]` | Records that the cleanup ran (or was skipped), or that onboarding finished |
 | `setup` | Regenerates the files generated from the engine. Safe to re-run |
-| `notify "<title>" "<message>"` | Pops up a desktop notification (Windows bottom-right). Use it for reminders: when a scheduled reminder fires, run this rather than a built-in push tool, which only reaches the terminal |
+| `remind <when> "<message>" [--daily] [--note "<Note>"]` | Sets a reminder that pops up at that time even if every window is closed (Windows). `when`: `HH:MM`, `YYYY-MM-DD HH:MM`, `+30m`, `+2h`; `--daily` with `HH:MM` repeats. `--list`, `--cancel <id\|all>`. Use this for every "remind me" request, never a session timer or the agent's own scheduler: those die with the session and only reach the terminal |
+| `notify "<title>" "<message>"` | Pops up a desktop notification right now |
 
 If Node is not installed, do the same work by hand following the skills. It is slower but everything still works.
 

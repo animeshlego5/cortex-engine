@@ -670,6 +670,9 @@ function restoreCmd(vault, paths) {
 
 function hookPrompt(vault) {
   let input = {}; try { input = JSON.parse(readStdin() || '{}'); } catch {}
+  // top up the queue of daily reminders once a day, before the state below is loaded
+  const st0 = loadState(vault);
+  if (process.platform === 'win32' && st0.reminders_synced !== today() && loadReminders(vault).length) { syncReminders(vault); st0.reminders_synced = today(); saveState(vault, st0); }
   const cfg = loadConfig(vault); const due = isDue(vault, cfg); const t = today();
   const s = due.state; const sid = input.session_id || input.conversationId || 'unknown';
   if (s.nudged_session === sid) return; // at most one nudge per session
@@ -691,24 +694,145 @@ function hookRead(vault) {
   if (fp) touchPaths(vault, [fp]);
 }
 
-// Desktop notification when the agent finishes a reply (Stop) or needs you (Notification).
+// ---------- notifications and reminders ----------
+
+// Desktop notifications: now (show), or handed to Windows' own schedule so they fire with nothing running (schedule).
 // Text goes through env vars, never into the script source, so note content can't inject commands.
+const WIN_APP_ID = 'Cortex.Notes';
 const WIN_TOAST = `
 [void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime]
 [void][Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType=WindowsRuntime]
+$app = $env:CORTEX_APP_ID
+if (-not (Test-Path "HKCU:\\Software\\Classes\\AppUserModelId\\$app")) { $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe' }
+$n = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app)
+$op = $env:CORTEX_OP
+if ($op -eq 'list') { $n.GetScheduledToastNotifications() | ForEach-Object { $_.Tag + '|' + $_.DeliveryTime.ToString('yyyy-MM-dd HH:mm') }; return }
+if ($op -eq 'cancel') { $t = $env:CORTEX_TOAST_TAG; $n.GetScheduledToastNotifications() | Where-Object { $t -eq '*' -or $_.Tag -eq $t -or $_.Tag.StartsWith($t + '-') } | ForEach-Object { $n.RemoveFromSchedule($_) }; return }
 $e = [Security.SecurityElement]
-$x = New-Object Windows.Data.Xml.Dom.XmlDocument
-$x.LoadXml("<toast><visual><binding template='ToastGeneric'><text>$($e::Escape($env:CORTEX_TOAST_TITLE))</text><text>$($e::Escape($env:CORTEX_TOAST_BODY))</text></binding></visual></toast>")
-$app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe'
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($x))`;
-function showNotification(title, body) {
-  const env = { ...process.env, CORTEX_TOAST_TITLE: title, CORTEX_TOAST_BODY: body };
-  let cmd; let args;
-  if (process.platform === 'win32') { cmd = 'powershell.exe'; args = ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', Buffer.from(WIN_TOAST, 'utf16le').toString('base64')]; }
-  else if (process.platform === 'darwin') { cmd = 'osascript'; args = ['-e', 'display notification (system attribute "CORTEX_TOAST_BODY") with title (system attribute "CORTEX_TOAST_TITLE")']; }
-  else { cmd = 'notify-send'; args = [title, body]; }
+$xml = "<toast><visual><binding template='ToastGeneric'><text>$($e::Escape($env:CORTEX_TOAST_TITLE))</text><text>$($e::Escape($env:CORTEX_TOAST_BODY))</text></binding></visual></toast>"
+if ($op -eq 'schedule') {
+  # reminder scenario: stays on screen until dismissed
+  $xml = $xml.Replace('<toast>', "<toast scenario='reminder'>").Replace('</visual>', "</visual><actions><action content='Dismiss' arguments='dismiss' activationType='system'/></actions>")
+  foreach ($item in ($env:CORTEX_TOAST_AT -split ';')) {
+    $tag, $iso = $item -split '\\|'
+    $x = New-Object Windows.Data.Xml.Dom.XmlDocument; $x.LoadXml($xml)
+    $st = [Windows.UI.Notifications.ScheduledToastNotification]::new($x, [DateTimeOffset]::Parse($iso))
+    $st.Tag = $tag; $st.Group = 'cortex'; $n.AddToSchedule($st)
+  }
+  return
+}
+$x = New-Object Windows.Data.Xml.Dom.XmlDocument; $x.LoadXml($xml)
+$n.Show([Windows.UI.Notifications.ToastNotification]::new($x))`;
+// Registers "Cortex" as a notification sender (name + icon) so toasts don't show up as Windows PowerShell.
+const WIN_REGISTER = `
+$k = "HKCU:\\Software\\Classes\\AppUserModelId\\$env:CORTEX_APP_ID"
+New-Item $k -Force | Out-Null
+Set-ItemProperty $k DisplayName 'Cortex'
+if ($env:CORTEX_CLAUDE -and (Test-Path $env:CORTEX_CLAUDE)) {
+  Add-Type -AssemblyName System.Drawing
+  New-Item -ItemType Directory -Force (Split-Path $env:CORTEX_ICON) | Out-Null
+  [System.Drawing.Icon]::ExtractAssociatedIcon($env:CORTEX_CLAUDE).ToBitmap().Save($env:CORTEX_ICON, [System.Drawing.Imaging.ImageFormat]::Png)
+  Set-ItemProperty $k IconUri $env:CORTEX_ICON
+}`;
+function runPowerShell(script, env) {
   // must run in the foreground: a detached PowerShell on Windows exits without showing the toast
-  spawnSync(cmd, args, { env, stdio: 'ignore', windowsHide: true, timeout: 8000 });
+  return spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+    { env: { ...process.env, CORTEX_APP_ID: WIN_APP_ID, ...env }, encoding: 'utf8', windowsHide: true, timeout: 15000 });
+}
+function winToast(op, env = {}) { return runPowerShell(WIN_TOAST, { CORTEX_OP: op, ...env }); }
+function registerWinApp() {
+  if (process.platform !== 'win32') return;
+  runPowerShell(WIN_REGISTER, { CORTEX_CLAUDE: findClaude() || '', CORTEX_ICON: path.join(process.env.LOCALAPPDATA || os.homedir(), 'Cortex', 'cortex.png') });
+}
+function showNotification(title, body) {
+  if (process.platform === 'win32') { winToast('show', { CORTEX_TOAST_TITLE: title, CORTEX_TOAST_BODY: body }); return; }
+  const env = { ...process.env, CORTEX_TOAST_TITLE: title, CORTEX_TOAST_BODY: body };
+  if (process.platform === 'darwin') spawnSync('osascript', ['-e', 'display notification (system attribute "CORTEX_TOAST_BODY") with title (system attribute "CORTEX_TOAST_TITLE")'], { env, stdio: 'ignore', timeout: 8000 });
+  else spawnSync('notify-send', [title, body], { stdio: 'ignore', timeout: 8000 });
+}
+
+// Reminders live in _meta/reminders.json (so they can be listed and recalled) and in Windows' notification schedule
+// (so they fire with no terminal, task or window open). Daily ones are queued REMIND_DAYS ahead and topped up each day Cortex is used.
+const REMIND_DAYS = 14;
+function loadReminders(vault) { return readJson(meta(vault, 'reminders.json'), []); }
+function slugTag(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'reminder'; }
+function compact(d) { return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`; }
+function parseWhen(when, daily) {
+  const now = new Date(); let m;
+  if (!daily && (m = when.match(/^\+(\d+)\s*(m|min|h|d)$/i))) return new Date(now.getTime() + Number(m[1]) * { m: 6e4, min: 6e4, h: 36e5, d: 864e5 }[m[2].toLowerCase()]);
+  const clock = when.match(/(\d{1,2}):(\d{2})$/);
+  if (clock && (Number(clock[1]) > 23 || Number(clock[2]) > 59)) return null;
+  if ((m = when.match(/^(\d{1,2}):(\d{2})$/))) {
+    const d = new Date(now); d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+    if (!daily && d <= now) d.setDate(d.getDate() + 1); // a time already passed today means tomorrow
+    return d;
+  }
+  if (!daily && (m = when.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})$/))) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+    return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null; // reject 2026-13-40 instead of rolling over
+  }
+  return null;
+}
+function occurrences(r, now = new Date()) {
+  if (!r.daily) return new Date(r.at) > now ? [{ tag: r.id, at: new Date(r.at) }] : [];
+  const [h, mi] = r.time.split(':').map(Number); const out = [];
+  for (let i = 0; i <= REMIND_DAYS; i++) {
+    const d = new Date(now); d.setDate(d.getDate() + i); d.setHours(h, mi, 0, 0);
+    if (d > now) out.push({ tag: `${r.id}-${compact(d).slice(0, 8)}`, at: d });
+  }
+  return out;
+}
+function scheduledTags() {
+  const r = winToast('list');
+  return new Set((r.stdout || '').split(/\r?\n/).map((l) => l.split('|')[0].trim()).filter(Boolean));
+}
+function syncReminders(vault) {
+  if (process.platform !== 'win32') return 0;
+  const now = new Date();
+  const all = loadReminders(vault); const live = all.filter((r) => r.daily || new Date(r.at) > now);
+  if (live.length !== all.length) writeJson(meta(vault, 'reminders.json'), live);
+  if (!live.length) return 0;
+  const have = scheduledTags(); let added = 0;
+  for (const r of live) {
+    const missing = occurrences(r, now).filter((o) => !have.has(o.tag));
+    if (!missing.length) continue;
+    winToast('schedule', { CORTEX_TOAST_TITLE: 'Cortex reminder', CORTEX_TOAST_BODY: r.message, CORTEX_TOAST_AT: missing.map((o) => `${o.tag}|${o.at.toISOString()}`).join(';') });
+    added += missing.length;
+  }
+  return added;
+}
+function remindCmd(vault, args) {
+  if (process.platform !== 'win32') fail('reminders currently use the Windows notification schedule, so they are Windows-only');
+  const file = meta(vault, 'reminders.json');
+  if (takeFlag(args, '--list')) {
+    syncReminders(vault);
+    const rs = loadReminders(vault);
+    if (!rs.length) { console.log('No reminders.'); return; }
+    for (const r of rs) console.log(`${r.id}  ${r.daily ? `daily at ${r.time}` : r.at.replace('T', ' ').slice(0, 16)}  ${r.message}${r.note ? `  (${r.note})` : ''}`);
+    return;
+  }
+  const cancel = takeFlag(args, '--cancel', true);
+  if (cancel) {
+    const rs = loadReminders(vault); const gone = rs.filter((r) => cancel === 'all' || r.id === cancel);
+    if (!gone.length) fail(`no reminder "${cancel}". See: cortex remind --list`);
+    for (const r of gone) winToast('cancel', { CORTEX_TOAST_TAG: r.id });
+    writeJson(file, rs.filter((r) => !gone.includes(r)));
+    appendLog(vault, 'reminder', `cancelled ${gone.map((r) => r.id).join(', ')}`);
+    console.log(`Cancelled ${gone.length} reminder(s).`); return;
+  }
+  const daily = takeFlag(args, '--daily'); const note = takeFlag(args, '--note', true);
+  const [when, ...words] = args; const message = words.join(' ').trim();
+  if (!when || !message) fail('usage: cortex remind <HH:MM | YYYY-MM-DD HH:MM | +30m | +2h> "<message>" [--daily] [--note "<Note>"]');
+  const at = parseWhen(when, daily);
+  if (!at) fail(daily ? '--daily needs a time like 22:00' : `can't read the time "${when}". Use HH:MM, YYYY-MM-DD HH:MM, +30m or +2h`);
+  const rs = loadReminders(vault);
+  const base = daily ? `${slugTag(message)}-daily` : `${slugTag(message)}-${compact(at)}`;
+  let id = base; for (let i = 2; rs.some((r) => r.id === id); i++) id = `${base}-${i}`;
+  const r = { id, message, ...(daily ? { daily: true, time: `${pad(at.getHours())}:${pad(at.getMinutes())}` } : { at: `${localDate(at)}T${pad(at.getHours())}:${pad(at.getMinutes())}` }), ...(note ? { note } : {}), created: today() };
+  rs.push(r); writeJson(file, rs);
+  const n = syncReminders(vault);
+  appendLog(vault, 'reminder', `${id}: ${message}`);
+  console.log(`Reminder set: "${message}" ${daily ? `every day at ${r.time} (next ${n} queued; topped up whenever Cortex runs)` : `at ${r.at.replace('T', ' ')}`}. Id: ${id}`);
 }
 function hookNotify(vault, event) {
   let input = {}; try { input = JSON.parse(readStdin() || '{}'); } catch {}
@@ -792,6 +916,8 @@ function setup(vault) {
   mergeHooks(codex, 'UserPromptSubmit', { type: 'command', command: 'node .engine/scripts/cortex.mjs hook prompt' });
   writeJson(ch, codex);
 
+  registerWinApp();
+  syncReminders(vault);
   const r = reindex(vault);
   return { skills, ...r };
 }
@@ -837,14 +963,16 @@ $lnk.IconLocation = "$env:CORTEX_CLAUDE,0"
 $lnk.Description = 'Open Claude Code in the Cortex vault'
 $lnk.Save()
 $lnk.FullName`;
+function findClaude() {
+  const native = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
+  if (fs.existsSync(native)) return native;
+  const r = spawnSync('where.exe', ['claude'], { encoding: 'utf8' });
+  return (r.stdout || '').split(/\r?\n/).find((l) => /\.(exe|cmd)$/i.test(l.trim()))?.trim() || null;
+}
 function shortcut(vault) {
   if (process.platform !== 'win32') fail(`shortcut is Windows-only. Elsewhere, add a shell alias: alias cortex='cd "${vault}" && claude'`);
-  let claude = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
-  if (!fs.existsSync(claude)) {
-    const r = spawnSync('where.exe', ['claude'], { encoding: 'utf8' });
-    claude = (r.stdout || '').split(/\r?\n/).find((l) => /\.(exe|cmd)$/i.test(l.trim()))?.trim();
-    if (!claude) fail('Claude Code CLI not found. Install it first: irm https://claude.ai/install.ps1 | iex');
-  }
+  const claude = findClaude();
+  if (!claude) fail('Claude Code CLI not found. Install it first: irm https://claude.ai/install.ps1 | iex');
   const wt = path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WindowsApps', 'wt.exe');
   let useWt = false; try { fs.lstatSync(wt); useWt = true; } catch {} // an app execution alias: existsSync can't follow it
   const env = {
@@ -931,7 +1059,10 @@ Usage: node .engine/scripts/cortex.mjs <command> [--vault <path>]
   done cleanup|onboarding [--skipped]   record that the weekly cleanup ran (or was skipped), or that onboarding finished
   setup                    create missing vault files and regenerate engine-owned files
   shortcut                 Windows: put a Cortex icon on the Desktop that opens Claude Code in this vault
-  notify "<title>" "<message>"   show a desktop notification now (for reminders)
+  notify "<title>" "<message>"   show a desktop notification now
+  remind <when> "<message>" [--daily] [--note "<Note>"]   Windows: schedule a reminder that fires with nothing open
+                           when: HH:MM, YYYY-MM-DD HH:MM, +30m, +2h (--daily takes HH:MM)
+  remind --list | --cancel <id|all>   list or cancel reminders
   hook prompt|read|stop|notify   used by agent hooks; reads JSON on stdin
 
 Run from the cortex-engine folder (node scripts/cortex.mjs ...):
@@ -959,6 +1090,7 @@ function main() {
   switch (cmd) {
     case 'status': return status(vault);
     case 'shortcut': return shortcut(vault);
+    case 'remind': return remindCmd(vault, args);
     case 'notify': if (!args[0]) fail('usage: cortex notify "<title>" "<message>"'); showNotification(args[0], args[1] || ''); return;
     case 'plan': { takeFlag(args, '--weekly'); const p = writePlan(vault); console.log(planMarkdown(p)); return; }
     case 'find': return find(vault, args);

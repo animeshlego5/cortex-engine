@@ -93,6 +93,11 @@ You never need to touch the folders, but if you're curious: each category is a f
 your answer or permission ("Cortex: needs you"). Windows shows them bottom-right, macOS in Notification Center, Linux via `notify-send`.
 Turn either off in `_meta/config.json`: `"notifications": { "done": false, "needs_input": true }`.
 
+**Reminders** (Windows): say *"remind me at 10 PM to call Mom"* or *"every day at 9 remind me to work out"*. Cortex hands the reminder to
+Windows' own notification schedule, so it pops up (as **Cortex**, and stays until dismissed) even with every window closed. No background task, nothing flashing on screen.
+Daily reminders are queued two weeks ahead and topped up whenever you use Cortex. Limits: a reminder due while the PC is off or asleep may not show,
+the text is fixed when it's set, and Do Not Disturb sends it silently to the notification centre (Win + N). Ask *"what reminders do I have?"* or *"cancel the workout reminder"* any time.
+
 ## Updating
 
 - **Get engine updates**: `git pull` in `cortex-engine/`, then in your vault run `node .engine/scripts/cortex.mjs setup`
